@@ -87,7 +87,7 @@ export const process2RowsFormat = (lines) => {
       }
     }
     
-    // Apply punctuation rules
+    // Apply punctuation rules 
     const processedCode = applyPunctuation(code, false, false);
     const processedLocation = applyPunctuation(location, false, false);
     const processedName = applyPunctuation(name, false, false);

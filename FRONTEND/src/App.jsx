@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import Login from './auth/Login.jsx';
 import FormatSelector from './components/FormatSelector';
@@ -19,16 +17,11 @@ import { processADPageFormat } from './utils/formatProcessors/adPageProcessor';
 import { cleanCSVForFormat } from './utils/csvCleaner.js';
 
 const App = () => {
-  // ============================================================================
-  // AUTHENTICATION STATE
-  // ============================================================================
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // ============================================================================
-  // EXISTING STATE
-  // ============================================================================
+  
   const [selectedFormat, setSelectedFormat] = useState('');
   const [fileContent, setFileContent] = useState('');
   const [outputHTML, setOutputHTML] = useState('');
@@ -36,9 +29,7 @@ const App = () => {
   const [fileName, setFileName] = useState('');
   const [processing, setProcessing] = useState(false);
 
-  // ============================================================================
   // CHECK AUTHENTICATION ON MOUNT
-  // ============================================================================
   useEffect(() => {
     // Check if user is already authenticated
     const authLocal = localStorage.getItem('isAuthenticated');
@@ -54,9 +45,7 @@ const App = () => {
     setIsCheckingAuth(false);
   }, []);
 
-  // ============================================================================
   // AUTHENTICATION HANDLERS
-  // ============================================================================
   const handleLoginSuccess = (email) => {
     setIsAuthenticated(true);
     setUserEmail(email);
@@ -79,9 +68,7 @@ const App = () => {
     setFileName('');
   };
 
-  // ============================================================================
   // EXISTING HANDLERS
-  // ============================================================================
 
   // File upload handler
   const handleFileUpload = async (e) => {

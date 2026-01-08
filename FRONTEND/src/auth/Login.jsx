@@ -37,9 +37,7 @@ const Login = ({ onLoginSuccess }) => {
     // Add more users here as needed
   ];
 
-  // ============================================================================
   // AUTHENTICATION LOGIC
-  // ============================================================================
 
   const handleLogin = (e) => {
     e.preventDefault();

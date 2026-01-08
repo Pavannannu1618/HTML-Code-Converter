@@ -246,7 +246,7 @@ const App = () => {
                 <p className="text-sm text-blue-800">
                   <strong>Note:</strong> All dots (.) are converted to &#8901; (dot code). 
                   You can manually change to &#39; (fullstop) if needed. 
-                  Ampersand (&) is left as-is (not converted).
+                
                 </p>
               </div>
             </div>

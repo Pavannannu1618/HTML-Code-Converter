@@ -13,6 +13,19 @@ import { processPage20000Format } from './utils/formatProcessors/page20000Proces
 import { processMDPageFormat } from './utils/formatProcessors/mdPageProcessor';
 import { processPage40000Format } from './utils/formatProcessors/page40000Processor';
 import { processADPageFormat } from './utils/formatProcessors/adPageProcessor';
+import { cleanCSVForFormat } from './utils/csvCleaner.js';
+
+const handleConvert = () => {
+  // 1. Get raw content
+  const rawContent = fileContent;
+  
+  // 2. Clean it (NEW STEP!)
+  const cleanedContent = cleanCSVForFormat(rawContent, selectedFormat);
+  
+  // 3. Process as usual
+  const lines = cleanedContent.split('\n');
+  const result = processFormat(lines);
+};
 
 const App = () => {
   const [selectedFormat, setSelectedFormat] = useState('');

@@ -29,10 +29,11 @@ const Login = ({ onLoginSuccess }) => {
   const AUTHORIZED_USERS = [
     { email: 'rakesh01@gmail.com', password: 'Rakesh01$$' },
     { email: 'anusha02@gmail.com', password: 'Anusha02$$' },
-    { email: 'pavan03@gmail.com', password: 'Pavan03 $$' },
+    { email: 'pavan03@gmail.com', password: 'Pavan03$$' },
     { email: 'ranjith04@gmail.com', password: 'Ranjith04$$' },
     { email: 'sathwika05@gmail.com', password: 'Sathwika05$$' },
     { email: 'gandhi06@gmail.com', password: 'Gandhi06$$' },
+    { email: 'admin@gmail.com', password: 'admin@123' },
     // Add more users here as needed
   ];
 

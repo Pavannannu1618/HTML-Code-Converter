@@ -316,9 +316,7 @@ const extractFields = (line, format) => {
   }
 };
 
-// ============================================================================
-// MAIN PROCESSOR
-// ============================================================================
+
 
 /**
  * Process AD Page Format
@@ -383,9 +381,7 @@ export const processADPageFormat = (lines) => {
   return { htmlOutput, dataArray };
 };
 
-// ============================================================================
-// VALIDATION
-// ============================================================================
+
 
 /**
  * Validate AD Page input
@@ -406,29 +402,3 @@ export const validateADPageInput = (lines) => {
     message: `Ready to process ${nonEmptyLines.length} AD Page records`
   };
 };
-
-/**
- * ============================================================================
- * USAGE IN APP.JSX
- * ============================================================================
- * 
- * import { processADPageFormat, validateADPageInput } from './utils/formatProcessors/adPageProcessor.js';
- * 
- * const handleConvert = () => {
- *   const lines = fileContent.split('\n');
- *   
- *   // Validate
- *   const validation = validateADPageInput(lines);
- *   if (!validation.valid) {
- *     alert(validation.error);
- *     return;
- *   }
- *   
- *   console.log(validation.message);
- *   
- *   // Process
- *   const result = processADPageFormat(lines);
- *   setOutputHTML(result.htmlOutput);
- *   setOutputData(result.dataArray);
- * };
- */

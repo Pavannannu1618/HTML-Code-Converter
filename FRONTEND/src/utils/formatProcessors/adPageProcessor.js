@@ -125,88 +125,168 @@ const detectFormat = (line) => {
 };
 
 /**
- * Split company name and address
- * Based on 2 Rows format logic
+ * Split company name and address - FINAL CORRECT VERSION
+ * 
+ * Rule: If entities are side-by-side (only punctuation/abbreviation fragments between), use LAST
+ *       Otherwise use FIRST
+ * 
+ * Examples:
+ * "COMPANY, L. L. C :" → Only ", L. L. C :" between → Use LAST (L.L.C)
+ * "C.O RP AMERICA" → "RP AMERICA" between → Use FIRST (C.O)
+ * "INC. ACIC LTD" → "ACIC LTD" between → Use FIRST (INC.)
  */
-const splitNameAndAddress = (combined) => {
+const splitCompanyNameAndAddress = (combined) => {
   if (!combined) return { name: '', address: '' };
   
-  let name = '';
-  let address = '';
+  const text = combined.trim();
+  if (!text) return { name: '', address: '' };
   
-  // Pattern 1: Try to match Name""Address"""
-  let match = combined.match(/^(.+?)""(.+?)"""$/);
-  if (match) {
-    name = match[1].trim();
-    address = match[2].trim();
-    return { name, address };
-  }
-  
-  // Pattern 2: Try to match Name""Address""
-  match = combined.match(/^(.+?)""(.+?)""$/);
-  if (match) {
-    name = match[1].trim();
-    address = match[2].trim();
-    return { name, address };
-  }
-  
-  // Pattern 3: Try to match Name""Address (single double-quote)
-  match = combined.match(/^(.+?)""(.+)$/);
-  if (match) {
-    name = match[1].trim();
-    address = match[2].trim();
-    return { name, address };
-  }
-  
-  // Pattern 4: Look for address-starting patterns
-  // Common patterns: street numbers, building names, suite/floor numbers
-  const addressPatterns = [
-    /\s+(Suite|Ste|Floor|Fl|Building|Bldg|Room|Rm|Unit|P\.O\.|PO Box)\s+/i,
-    /\s+\d+\s+[A-Z][a-z]+\s+(Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Boulevard|Blvd)/i,
-    /\s+\d{3,}\s+[A-Z]/,  // Address starting with number
-    /\s+(Float Plant|Automotive Plant|Business Center)/i
-  ];
-  
-  for (let pattern of addressPatterns) {
-    const addressMatch = combined.match(pattern);
-    if (addressMatch) {
-      const pos = addressMatch.index;
-      name = combined.substring(0, pos).trim();
-      address = combined.substring(pos).trim();
-      return { name, address };
-    }
-  }
-  
-  // Pattern 5: Entity detection LAST (as fallback)
-  // Look for complete entity phrases with word boundaries
+  // Define entity patterns - FIXED to handle spaces in abbreviations
   const entityPatterns = [
-    /\s+(COMPANY|CO\.|CO|CORPORATION|CORP\.|CORP)\s+/i,
-    /\s+(LIMITED|LTD\.|LTD)\s+/i,
-    /\s+(INCORPORATED|INC\.|INC)\s+/i,
-    /\s+(L\.P\.|LP|L\.L\.C\.|LLC|LLP)\s+/i
+    /\b(COMPANY|COMPANIES)\b/gi,
+    /\b(CORPORATION)\b/gi,
+    /\b(CORP\.)\b/gi,
+    /\b(LIMITED)\b/gi,
+    /\b(LTD\.?)\b/gi,
+    /\b(INCORPORATED)\b/gi,
+    /\b(INC\.?)\b/gi,
+    /\b(C\.O\.?)\b/gi,
+    /\b(L\.\s*P\.?|LP)\b/gi,              // Match "L.P" or "L. P" with optional space
+    /\b(L\.\s*L\.\s*C\.?|LLC)\b/gi,       // Match "L.L.C" or "L. L. C" with optional spaces
+    /\b(LLP)\b/gi,
+    /\b(S\.A\.?)\b/gi,
+    /\b(A\.G\.?)\b/gi,
+    /\b(I\.\s*N\.\s*C\.?)\b/gi,           // Match "I.N.C" with optional spaces
+    /\b(PLC)\b/gi
   ];
   
-  let latestEntityEnd = -1;
-  
+  // Find ALL entities
+  const entities = [];
   for (let pattern of entityPatterns) {
-    const matches = [...combined.matchAll(new RegExp(pattern, 'gi'))];
-    if (matches.length > 0) {
-      const lastMatch = matches[matches.length - 1];
-      const endPos = lastMatch.index + lastMatch[0].length;
-      if (endPos > latestEntityEnd) {
-        latestEntityEnd = endPos;
-      }
+    pattern.lastIndex = 0;
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      entities.push({
+        text: match[0],
+        start: match.index,
+        end: match.index + match[0].length
+      });
     }
   }
   
-  if (latestEntityEnd > 0) {
-    name = combined.substring(0, latestEntityEnd).trim();
-    address = combined.substring(latestEntityEnd).trim();
-    return { name, address };
+  // Remove duplicates and sort
+  const uniqueEntities = [];
+  const seen = new Set();
+  for (let entity of entities) {
+    const key = `${entity.start}-${entity.end}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniqueEntities.push(entity);
+    }
+  }
+  uniqueEntities.sort((a, b) => a.start - b.start);
+  
+  // No entities found
+  if (uniqueEntities.length === 0) {
+    const streetMatch = text.match(/^(.+?)\s+(\d{1,5}\s+[A-Z])/);
+    if (streetMatch) {
+      return {
+        name: streetMatch[1].trim(),
+        address: text.substring(streetMatch[1].length).trim()
+      };
+    }
+    
+    const addressKeywords = /\b(Suite|Ste|Floor|Fl|Building|Bldg|Room|Rm|Unit|P\.O\.|PO Box|Float Plant|Automotive Plant|Business Center)\b/i;
+    const keywordMatch = text.match(addressKeywords);
+    if (keywordMatch) {
+      return {
+        name: text.substring(0, keywordMatch.index).trim(),
+        address: text.substring(keywordMatch.index).trim()
+      };
+    }
+    
+    const quoteMatch = text.match(/^([^"]+)(")/);
+    if (quoteMatch) {
+      return {
+        name: quoteMatch[1].trim(),
+        address: text.substring(quoteMatch[1].length).trim()
+      };
+    }
+    
+    const lowerMatch = text.match(/^([A-Z\s&'.\/\-]+?)\s+([a-z]{3,})/);
+    if (lowerMatch) {
+      return {
+        name: lowerMatch[1].trim(),
+        address: text.substring(lowerMatch[1].length).trim()
+      };
+    }
+    
+    return { name: text, address: '' };
   }
   
-  // Default: everything is name
-  return { name: combined.trim(), address: '' };
+  // One entity - split after it (plus trailing punctuation)
+  if (uniqueEntities.length === 1) {
+    let splitPoint = uniqueEntities[0].end;
+    
+    // Include trailing punctuation as part of name
+    const afterEntity = text.substring(splitPoint);
+    const trailingPunct = afterEntity.match(/^[\s,:;]*/);
+    if (trailingPunct) {
+      splitPoint += trailingPunct[0].length;
+    }
+    
+    return {
+      name: text.substring(0, splitPoint).trim(),
+      address: text.substring(splitPoint).trim()
+    };
+  }
+  
+  // Multiple entities - check what's between them
+  // "Side by side" means only punctuation and single-letter abbreviations (like "L. L. C")
+  let useLastEntity = true;
+  
+  for (let i = 0; i < uniqueEntities.length - 1; i++) {
+    const current = uniqueEntities[i];
+    const next = uniqueEntities[i + 1];
+    
+    // Get text between entities
+    const between = text.substring(current.end, next.start).trim();
+    
+    // Check for REAL WORDS (not just abbreviation fragments)
+    // Real words = sequences of 3+ capital letters that look like words
+    // "LOGISTICS PARTNERS" = real words
+    // ", L. L. C" = just abbreviation fragments
+    
+    // Remove all punctuation and dots
+    const cleanedBetween = between.replace(/[,.:;\s]/g, '');
+    
+    // If what remains is short (< 5 chars), it's probably just abbreviation fragments
+    // "LLC" = 3 chars → abbreviation
+    // "LOGISTICSPARTNERS" = 17 chars → real words
+    if (cleanedBetween.length >= 5) {
+      // Long enough to be real words, use FIRST entity
+      useLastEntity = false;
+      break;
+    }
+  }
+  
+  const entityToUse = useLastEntity ? 
+    uniqueEntities[uniqueEntities.length - 1] : 
+    uniqueEntities[0];
+  
+  let splitPoint = entityToUse.end;
+  
+  // Include trailing punctuation as part of name
+  const afterEntity = text.substring(splitPoint);
+  const trailingPunct = afterEntity.match(/^[\s,:;]*/);
+  if (trailingPunct) {
+    splitPoint += trailingPunct[0].length;
+  }
+  
+  return {
+    name: text.substring(0, splitPoint).trim(),
+    address: text.substring(splitPoint).trim()
+  };
 };
 
 /**
@@ -216,10 +296,10 @@ const extractFields = (line, format) => {
   if (format === 'comma') {
     // Format 1: "Name+Address",Link
     const fields = parseCSVLine(line);
-    const nameAddress = fields[0] || '';
+    const nameAndAddress = fields[0] || '';
     const link = fields[1] || '';
     
-    const { name, address } = splitNameAndAddress(nameAddress);
+    const { name, address } = splitCompanyNameAndAddress(nameAndAddress);
     
     return { name, address, link };
   } else {
@@ -227,10 +307,10 @@ const extractFields = (line, format) => {
     const cleanLine = line.replace(/^"/, '').replace(/"$/, '');
     const parts = cleanLine.split(/\s{10,}/);
     
-    const nameAddress = parts[0] || '';
+    const nameAndAddress = parts[0] || '';
     const link = parts[1] || '';
     
-    const { name, address } = splitNameAndAddress(nameAddress);
+    const { name, address } = splitCompanyNameAndAddress(nameAndAddress);
     
     return { name, address, link };
   }
@@ -243,9 +323,9 @@ const extractFields = (line, format) => {
 /**
  * Process AD Page Format
  * 
- * Each record has 3 fields:
- * 1. Company Name (with spacing)
- * 2. Company Address (with spacing)
+ * Each record has 3 lines:
+ * 1. Company Name Part 1 (with spacing)
+ * 2. Company Name Part 2 + Address (with spacing)
  * 3. Link (no spacing)
  * 
  * @param {Array<string>} lines - Lines from uploaded file

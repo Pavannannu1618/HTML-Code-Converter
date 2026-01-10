@@ -189,7 +189,7 @@ export const applyPunctuationNoSpacing = (text) => {
     
     if (char === '"') {
       // Double quote (no spacing for links)
-      output += isDoubleQuoteOpen ? '&#ldquo;' : '&#rdquo;';
+      output += isDoubleQuoteOpen ? '&ldquo;' : '&rdquo;';
       isDoubleQuoteOpen = !isDoubleQuoteOpen;
     } else if (char === "'") {
       // Single quote (no spacing for links)

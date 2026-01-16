@@ -93,17 +93,17 @@ export const applyPunctuationWithSpacing = (text) => {
     if (char === '"') {
       // Double quote with spacing
       if (isDoubleQuoteOpen) {
-        output += ' &#ldquo;'; // BEFORE SINGLE SPACE
+        output += ' &ldquo;'; // BEFORE SINGLE SPACE
       } else {
-        output += '&#rdquo; '; // AFTER SINGLE SPACE
+        output += '&rdquo; '; // AFTER SINGLE SPACE
       }
       isDoubleQuoteOpen = !isDoubleQuoteOpen;
     } else if (char === "'") {
       // Single quote with spacing
       if (isSingleQuoteOpen) {
-        output += ' &#8216;'; // BEFORE SINGLE SPACE
+        output += ' &lsquo;'; // BEFORE SINGLE SPACE
       } else {
-        output += '&#8217; '; // AFTER SINGLE SPACE
+        output += '&rsquo; '; // AFTER SINGLE SPACE
       }
       isSingleQuoteOpen = !isSingleQuoteOpen;
     } else {

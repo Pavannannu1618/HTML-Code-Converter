@@ -5,7 +5,7 @@ import FileUpload from './components/FileUpload';
 import ConversionButton from './components/ConversionButton';
 import OutputDisplay from './components/OutputDisplay';
 
-// Import format processors
+// Import format processors - ALL 12 FORMATS
 import { process2RowsFormat } from './utils/formatProcessors/twoRowsProcessor';
 import { process4RowsFormat } from './utils/formatProcessors/fourRowsProcessor';
 import { processWebsiteFormat } from './utils/formatProcessors/websiteProcessor';
@@ -14,6 +14,11 @@ import { processPage20000Format } from './utils/formatProcessors/page20000Proces
 import { processMDPageFormat } from './utils/formatProcessors/mdPageProcessor';
 import { processPage40000Format } from './utils/formatProcessors/page40000Processor';
 import { processADPageFormat } from './utils/formatProcessors/adPageProcessor';
+// NEW FORMATS - Now fully implemented!
+import { processPage30000Format } from './utils/formatProcessors/page30000Processor';
+import { processAFormat } from './utils/formatProcessors/aFormatProcessor';
+import { processBCFormat } from './utils/formatProcessors/bcFormatProcessor';
+import { processBWNWFormat } from './utils/formatProcessors/bwnwFormatProcessor';
 import { cleanCSVForFormat } from './utils/csvCleaner.js';
 
 const App = () => {
@@ -21,7 +26,6 @@ const App = () => {
   const [userEmail, setUserEmail] = useState('');
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  
   const [selectedFormat, setSelectedFormat] = useState('');
   const [fileContent, setFileContent] = useState('');
   const [outputHTML, setOutputHTML] = useState('');
@@ -31,7 +35,6 @@ const App = () => {
 
   // CHECK AUTHENTICATION ON MOUNT
   useEffect(() => {
-    // Check if user is already authenticated
     const authLocal = localStorage.getItem('isAuthenticated');
     const authSession = sessionStorage.getItem('isAuthenticated');
     const emailLocal = localStorage.getItem('userEmail');
@@ -52,13 +55,11 @@ const App = () => {
   };
 
   const handleLogout = () => {
-    // Clear authentication
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('userEmail');
     sessionStorage.removeItem('isAuthenticated');
     sessionStorage.removeItem('userEmail');
     
-    // Clear application state
     setIsAuthenticated(false);
     setUserEmail('');
     setSelectedFormat('');
@@ -68,9 +69,7 @@ const App = () => {
     setFileName('');
   };
 
-  // EXISTING HANDLERS
-
-  // File upload handler
+  // FILE UPLOAD HANDLER
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -88,20 +87,20 @@ const App = () => {
     }
   };
 
-  // Process content based on selected format
+  // PROCESS CONTENT - ALL 12 FORMATS
   const processContent = () => {
     if (!fileContent || !selectedFormat) return;
     
     setProcessing(true);
     
     setTimeout(() => {
-      // Clean CSV content first (removes Excel metadata)
       const cleanedContent = cleanCSVForFormat(fileContent, selectedFormat);
       const lines = cleanedContent.split('\n').filter(line => line.trim());
       
       let result;
 
       switch (selectedFormat) {
+        // EXISTING FORMATS (8)
         case '2rows':
           result = process2RowsFormat(lines);
           break;
@@ -126,6 +125,21 @@ const App = () => {
         case 'adpage':
           result = processADPageFormat(lines);
           break;
+        
+        // NEW FORMATS (4) - Now fully implemented!
+        case 'page30000':
+          result = processPage30000Format(lines);
+          break;
+        case 'aformat':
+          result = processAFormat(lines);
+          break;
+        case 'bformat':
+          result = processBCFormat(lines);
+          break;
+        case 'bwformat':
+          result = processBWNWFormat(lines);
+          break;
+        
         default:
           result = { htmlOutput: '', dataArray: [] };
       }
@@ -139,13 +153,13 @@ const App = () => {
     }, 500);
   };
 
-  // Copy to clipboard
+  // COPY TO CLIPBOARD
   const copyToClipboard = () => {
     navigator.clipboard.writeText(outputHTML);
     alert('HTML copied to clipboard!');
   };
 
-  // Download as Excel-compatible file
+  // DOWNLOAD AS EXCEL
   const downloadExcel = () => {
     let csv = '';
     
@@ -175,9 +189,7 @@ const App = () => {
     URL.revokeObjectURL(url);
   };
 
-  // ============================================================================
-  // RENDER - LOADING STATE
-  // ============================================================================
+  // LOADING STATE
   if (isCheckingAuth) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
@@ -189,16 +201,12 @@ const App = () => {
     );
   }
 
-  // ============================================================================
-  // RENDER - LOGIN PAGE
-  // ============================================================================
+  // LOGIN PAGE
   if (!isAuthenticated) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // ============================================================================
-  // RENDER - AUTHENTICATED APP (YOUR EXISTING UI)
-  // ============================================================================
+  // MAIN APPLICATION
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header with Logout */}
@@ -230,7 +238,7 @@ const App = () => {
         </div>
       </div>
 
-      {/* Main Content - Your Existing App */}
+      {/* Main Content */}
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8">
@@ -243,10 +251,13 @@ const App = () => {
                 Convert company data to HTML format with proper punctuation codes
               </p>
               <div className="mt-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+                <p className="text-sm text-blue-800 mb-2">
+                  <strong>📊 Total Formats:</strong> 12 formats
+                  <span className="ml-4 text-green-600 font-semibold">✅ All Active!</span>
+                </p>
                 <p className="text-sm text-blue-800">
                   <strong>Note:</strong> All dots (.) are converted to &#8901; (dot code). 
-                  You can manually change to &#39; (fullstop) if needed. 
-                
+                  You can manually change to &#39; (fullstop) if needed.
                 </p>
               </div>
             </div>

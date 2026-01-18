@@ -45,10 +45,10 @@ const PUNCTUATION_MAP = [
   // Code 11: Right Parenthesis (&#41;) - AFTER SINGLE SPACE
   { char: ')', code: '&#41;', spacing: 'after' },
   
-  // Code 12: Left Single Quote (&#8216;) - BEFORE SINGLE SPACE
+  // Code 12: Left Single Quote (&lsquo;) - BEFORE SINGLE SPACE
   // Handled separately with alternating logic
   
-  // Code 13: Right Single Quote (&#8217;) - AFTER SINGLE SPACE
+  // Code 13: Right Single Quote (&rsquo;) - AFTER SINGLE SPACE
   // Handled separately with alternating logic
   
   // Code 14: Left Double Quote (&ldquo;) - BEFORE SINGLE SPACE
@@ -142,6 +142,10 @@ export const applyPunctuationWithSpacing = (text) => {
   // Step 6: Handle quotes with alternating left/right and smart spacing
   // Single quotes: &lsquo; (left) and &rsquo; (right)
   // Double quotes: &ldquo; (left) and &rdquo; (right)
+  // 
+  // SPACING RULES (ALWAYS APPLIED):
+  // - Left quote: ALWAYS space BEFORE
+  // - Right quote: ALWAYS space AFTER
   let isSingleQuoteOpen = true;
   let isDoubleQuoteOpen = true;
   let output = '';
@@ -154,21 +158,33 @@ export const applyPunctuationWithSpacing = (text) => {
     if (char === "'") {
       // Single quote - alternating left/right
       if (isSingleQuoteOpen) {
-        // Left single quote - BEFORE SINGLE SPACE
-        output += (prevChar && prevChar !== ' ' ? ' ' : '') + '&lsquo;';
+        // Left single quote - ALWAYS space BEFORE (if prev char is not already space)
+        if (prevChar !== ' ') {
+          output += ' ';
+        }
+        output += '&lsquo;';
       } else {
-        // Right single quote - AFTER SINGLE SPACE
-        output += '&rsquo;' + (nextChar && nextChar !== ' ' ? ' ' : '');
+        // Right single quote - ALWAYS space AFTER (if next char is not already space)
+        output += '&rsquo;';
+        if (nextChar !== ' ') {
+          output += ' ';
+        }
       }
       isSingleQuoteOpen = !isSingleQuoteOpen;
     } else if (char === '"') {
       // Double quote - alternating left/right
       if (isDoubleQuoteOpen) {
-        // Left double quote - BEFORE SINGLE SPACE
-        output += (prevChar && prevChar !== ' ' ? ' ' : '') + '&ldquo;';
+        // Left double quote - ALWAYS space BEFORE (if prev char is not already space)
+        if (prevChar !== ' ') {
+          output += ' ';
+        }
+        output += '&ldquo;';
       } else {
-        // Right double quote - AFTER SINGLE SPACE
-        output += '&rdquo;' + (nextChar && nextChar !== ' ' ? ' ' : '');
+        // Right double quote - ALWAYS space AFTER (if next char is not already space)
+        output += '&rdquo;';
+        if (nextChar !== ' ') {
+          output += ' ';
+        }
       }
       isDoubleQuoteOpen = !isDoubleQuoteOpen;
     } else {
@@ -177,7 +193,8 @@ export const applyPunctuationWithSpacing = (text) => {
   }
   
   // Final cleanup: remove any double spaces that might have been created
-  output = output.replace(/\s{2,}/g, ' ').trim();
+  // DON'T trim - we need the spaces before/after quote codes!
+  output = output.replace(/\s{2,}/g, ' ');
   
   return output;
 };

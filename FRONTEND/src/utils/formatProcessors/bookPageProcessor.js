@@ -12,7 +12,7 @@ const formatLinkText = (text) => {
   let output = '';
   for (let i = 0; i < processed.length; i++) {
     if (processed[i] === '"') {
-      output += isOpen ? '&#rdquo;' : '&#ldquo;';
+      output += isOpen ? '&rdquo;' : '&ldquo;';
       isOpen = !isOpen;
     } else {
       output += processed[i];

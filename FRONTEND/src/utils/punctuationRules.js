@@ -111,21 +111,21 @@ export const applyPunctuationWithSpacing = (text) => {
   result = result.replace(/\[\[DECIMAL\]\]/g, '&#69;');
   result = result.replace(/\[\[DOT\]\]/g, '&#8901;');
   
-  // Step 4: Add spacing intelligently (only where spaces don't exist)
+  // Step 4: Add spacing intelligently (always add, even at end of line)
   PUNCTUATION_MAP.forEach((item) => {
     const code = escapeRegex(item.code);
     
     switch (item.spacing) {
       case 'after':
-        // Add space after code only if next char is not already a space
+        // Add space after code (always, even at end)
         result = result.replace(new RegExp(`${code}(?! )`, 'g'), `${item.code} `);
         break;
       case 'before':
-        // Add space before code only if prev char is not already a space
+        // Add space before code (always, even at start)
         result = result.replace(new RegExp(`(?<! )${code}`, 'g'), ` ${item.code}`);
         break;
       case 'both':
-        // Add spaces on both sides only where they don't exist
+        // Add spaces on both sides (always)
         result = result.replace(new RegExp(`(?<! )${code}(?! )`, 'g'), ` ${item.code} `);
         result = result.replace(new RegExp(`(?<! )${code} `, 'g'), ` ${item.code} `);
         result = result.replace(new RegExp(` ${code}(?! )`, 'g'), ` ${item.code} `);
@@ -133,7 +133,7 @@ export const applyPunctuationWithSpacing = (text) => {
     }
   });
   
-  // Add space after dot code only if not already present
+  // Add space after dot code (always, even at end)
   result = result.replace(/&#8901;(?! )/g, '&#8901; ');
   
   // Step 5: Clean multiple spaces (but preserve single spaces)
@@ -143,7 +143,7 @@ export const applyPunctuationWithSpacing = (text) => {
   // Single quotes: &lsquo; (left) and &rsquo; (right)
   // Double quotes: &ldquo; (left) and &rdquo; (right)
   // 
-  // SPACING RULES (ALWAYS APPLIED):
+  // SPACING RULES (ALWAYS APPLIED, even at line boundaries):
   // - Left quote: ALWAYS space BEFORE
   // - Right quote: ALWAYS space AFTER
   let isSingleQuoteOpen = true;
@@ -192,8 +192,7 @@ export const applyPunctuationWithSpacing = (text) => {
     }
   }
   
-  // Final cleanup: remove any double spaces that might have been created
-  // DON'T trim - we need the spaces before/after quote codes!
+  // DON'T trim - we need the spaces at start/end!
   output = output.replace(/\s{2,}/g, ' ');
   
   return output;

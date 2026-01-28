@@ -34,6 +34,7 @@ const Login = ({ onLoginSuccess }) => {
     { email: 'sathwika05@gmail.com', password: 'Sathwika05$$' },
     { email: 'gandhi06@gmail.com', password: 'Gandhi06$$' },
     { email: 'admin@gmail.com', password: 'admin@123' },
+    {email: "gaddamsaii17@gmail.com" , password:"Sai17$$"}
     // Add more users here as needed
   ];
 

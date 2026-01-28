@@ -1,131 +1,216 @@
 /**
  * ============================================================================
- * SHARED PUNCTUATION RULES - OFFICIAL 20 CODES
+ * PUNCTUATION RULES - COMPANY APPROVED VERSION
  * ============================================================================
  * 
- * These are the ONLY 20 codes to use. No additional codes!
+ * Features:
+ * 1. Remove extra spaces before processing
+ * 2. Dot after ANY punctuation = fullstop (&#39;) with DOUBLE space
+ * 3. Dot after company-specific keywords = fullstop (&#39;) with DOUBLE space
+ * 4. Always add spacing, even at end of line
+ * 5. Smart quote handling with proper spacing
  * 
  * ============================================================================
  */
 
 /**
- * Official 20 punctuation codes with spacing rules
+ * COMPANY-SPECIFIC KEYWORDS (CASE-SENSITIVE!)
+ * 
+ * Per company rules: After these specific words, dot becomes fullstop.
+ * This list is maintained by the company and will be updated as needed.
+ */
+const FULLSTOP_KEYWORDS = [
+  'China', 'china', 'CHINA', 
+  'BOX', 'Box', 'box', 
+  'window', 'Window', 'WINDOW',
+  'Google', 'google', 'GOOGLE', 
+  'Microsoft', 'microsoft', 'MICROSOFT',
+  'Amazon', 'amazon', 'AMAZON', 
+  'Facebook', 'facebook', 'FACEBOOK',
+  'Twitter', 'twitter', 'TWITTER', 
+  'LinkedIn', 'linkedin', 'LINKEDIN',
+  'Dia', 'dia', 'DIA', 
+  'Villa', 'villa', 'VILLA', 
+  'List', 'list', 'LIST',
+  'This', 'this', 'THIS', 
+  'Styles', 'styles', 'STYLES', 
+  'File', 'file', 'FILE',
+  'Document', 'document', 'DOCUMENT', 
+  'GoogleeAccounts', 'googleaccounts', 'GOOGLEACCOUNTS',
+  'Account', 'account', 'ACCOUNT', 
+  'GoogleServices', 'googleservices', 'GOOGLESERVICES',
+  'Services', 'services', 'SERVICES', 
+  'Admin', 'admin', 'ADMIN', 
+  'Console', 'console', 'CONSOLE',
+  'Support', 'support', 'SUPPORT', 
+  'Help', 'help', 'HELP', 
+  'Center', 'center', 'CENTER', 
+  'prototype', 'Prototype', 'PROTOTYPE',
+  'Example', 'example', 'EXAMPLE', 
+  'menu', 'Menu', 'MENU', 
+  'button', 'Button', 'BUTTON',
+  'click', 'Click', 'CLICK', 
+  'select', 'Select', 'SELECT', 
+  'option', 'Option', 'OPTION',
+  'webcache', 'Webcache', 'WEBCACHE', 
+  'available', 'Available', 'AVAILABLE', 
+  'sit', 'Sit', 'SIT',
+  'cool', 'Cool', 'COOL', 
+  'tool', 'Tool', 'TOOL', 
+  'page', 'Page', 'PAGE', 
+  'Shenzhen', 'shenzhen', 'SHENZHEN',
+  'mcafee', 'Mcafee', 'MCAFEE', 
+  'lany', 'Lany', 'LANY', 
+  'press', 'Press', 'PRESS',
+  'release', 'Release', 'RELEASE', 
+  'valley', 'Valley', 'VALLEY', 
+  'rod', 'Rod', 'ROD', 
+  'Cap', 'cap', 'CAP',
+  'cloud', 'Cloud', 'CLOUD', 
+  'Unavailable', 'unavailable', 'UNAVAILABLE', 
+  'googleUsercontent', 'GoogleUsercontent', 'GOOGLEUSERCONTENT',
+  'Road', 'road', 'ROAD', 
+  'Slice', 'slice', 'SLICE', 
+  'aparatus', 'Aparatus', 'APARATUS', 
+  'apara', 'Apara', 'APARA', 
+  'combined', 'Combined', 'COMBINED', 
+  'comb', 'Comb', 'COMB',
+  'configuration', 'Configuration', 'CONFIGURATION', 
+  'thustonia', 'Thustonia', 'THUSTONIA', 
+  'CORPORATION', 'Corporation', 'corporation', 
+  'Incorporated', 'incorporated', 'INCORPORATED',
+  'Limited', 'limited', 'LIMITED', 
+  'technologies', 'Technologies', 'TECHNOLOGIES', 
+  'technology', 'Technology', 'TECHNOLOGY', 
+  'systems', 'Systems', 'SYSTEMS', 
+  'system', 'System', 'SYSTEM',
+  'solutions', 'Solutions', 'SOLUTIONS', 
+  'solution', 'Solution', 'SOLUTION', 
+  'international', 'International', 'INTERNATIONAL', 
+  'internationally', 'Internationally', 'INTERNATIONALLY',
+  'partners', 'Partners', 'PARTNERS', 
+  'partner', 'Partner', 'PARTNER', 
+  'associates', 'Associates', 'ASSOCIATES', 
+  'associate', 'Associate', 'ASSOCIATE',
+  'holdings', 'Holdings', 'HOLDINGS', 
+  'holding', 'Holding', 'HOLDING', 
+  'enterprises', 'Enterprises', 'ENTERPRISES', 
+  'enterprise', 'Enterprise', 'ENTERPRISE',
+  'ventures', 'Ventures', 'VENTURES', 
+  'venture', 'Venture', 'VENTURE', 
+  'global', 'Global', 'GLOBAL', 
+  'globals', 'Globals', 'GLOBALS',
+  'universal', 'Universal', 'UNIVERSAL', 
+  'universally', 'Universally', 'UNIVERSALLY', 
+  'networks', 'Networks', 'NETWORKS', 
+  'network', 'Network', 'NETWORK', 
+  'technologic', 'Technologic', 'TECHNOLOGIC', 
+  'technologically', 'Technologically', 'TECHNOLOGICALLY',
+  
+  // Standard abbreviations
+  // 'Inc', 'Ltd', 'Corp', 'Co', 'LLC', 'LLP', 'Pty', 'Assoc', 'Bros',
+  // 'Ave', 'St', 'Rd', 'Dr', 'Blvd', 'Ln', 'Ct', 'Pl', 'Ste', 'Suite', 'Apt', 'Bldg', 'Fl', 'Floor',
+  // 'Mr', 'Mrs', 'Ms', 'Miss', 'Prof', 'Sr', 'Jr', 'Esq',
+  // 'Dept', 'Div', 'No', 'Vol', 'vs', 'etc', 'al', 'Fig', 'Ref', 'Est', 'Approx'
+];
+
+/**
+ * Official 20 punctuation codes
  */
 const PUNCTUATION_MAP = [
-  // Code 1: Dot • (&#8901;) - AFTER SINGLE SPACE
-  { char: '.', code: '&#8901;', spacing: 'after', isDecimal: false },
-  
-  // Code 2: Decimal • (&#69;) - NO SPACE (handled separately)
-  // This is for dots between numbers like 3.14
-  
-  // Code 3: Fullstop • (&#39;) - AFTER DOUBLE SPACE
-  // NOTE: Not used in conversion - user will manually change if needed
-  
-  // Code 4: Comma (&#44;) - AFTER SINGLE SPACE
+  { char: '.', code: '&#8901;', spacing: 'after' },
   { char: ',', code: '&#44;', spacing: 'after' },
-  
-  // Code 5: Semicolon (&#59;) - AFTER SINGLE SPACE
   { char: ';', code: '&#59;', spacing: 'after' },
-  
-  // Code 6: Colon (&#58;) - AFTER SINGLE SPACE
   { char: ':', code: '&#58;', spacing: 'after' },
-  
-  // Code 7: Hyphen (&#45;) - ONE SPACE BEFORE AND AFTER
   { char: '-', code: '&#45;', spacing: 'both' },
-  
-  // Code 8: Forward Slash (&#47;) - NO SPACE
   { char: '/', code: '&#47;', spacing: 'none' },
-  
-  // Code 9: Back Slash (&#92;) - NO SPACE
   { char: '\\', code: '&#92;', spacing: 'none' },
-  
-  // Code 10: Left Parenthesis (&#40;) - BEFORE SINGLE SPACE
   { char: '(', code: '&#40;', spacing: 'before' },
-  
-  // Code 11: Right Parenthesis (&#41;) - AFTER SINGLE SPACE
   { char: ')', code: '&#41;', spacing: 'after' },
-  
-  // Code 12: Left Single Quote (&lsquo;) - BEFORE SINGLE SPACE
-  // Handled separately with alternating logic
-  
-  // Code 13: Right Single Quote (&rsquo;) - AFTER SINGLE SPACE
-  // Handled separately with alternating logic
-  
-  // Code 14: Left Double Quote (&ldquo;) - BEFORE SINGLE SPACE
-  // Handled separately with alternating logic
-  
-  // Code 15: Right Double Quote (&rdquo;) - AFTER SINGLE SPACE
-  // Handled separately with alternating logic
-  
-  // Code 16: Exclamation (&#33;) - AFTER SINGLE SPACE
   { char: '!', code: '&#33;', spacing: 'after' },
-  
-  // Code 17: Plus sign (&#43;) - ONE SPACE BEFORE AND AFTER
   { char: '+', code: '&#43;', spacing: 'both' },
-  
-  // Code 18: Less than sign (&#60;) - BEFORE SINGLE SPACE
   { char: '<', code: '&#60;', spacing: 'before' },
-  
-  // Code 19: Greater than sign (&#62;) - AFTER SINGLE SPACE
   { char: '>', code: '&#62;', spacing: 'after' },
-  
-  // Code 20: Underscore (&#95;) - NO SPACE
   { char: '_', code: '&#95;', spacing: 'none' }
 ];
 
 /**
- * Escape special regex characters in a string
+ * Escape regex special characters
  */
 const escapeRegex = (str) => {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 };
 
 /**
- * Apply punctuation with spacing (for addresses, details, etc.)
- * 
- * @param {string} text - Text to process
- * @returns {string} - Processed text with HTML codes and spacing
+ * Main processing function with spacing
  */
 export const applyPunctuationWithSpacing = (text) => {
   if (!text) return '';
   
   let result = text.trim();
   
-  // Step 1: Replace with placeholders to avoid conflicts
-  PUNCTUATION_MAP.forEach((item, index) => {
-    result = result.split(item.char).join(`[[P${index}]]`);
+  // STEP 1: Clean extra spaces
+  result = result.replace(/\s+([,;:!.)\]}>?])/g, '$1');
+  result = result.replace(/\s{2,}/g, ' ');
+  
+  // STEP 2: Detect and mark fullstop conditions BEFORE any replacements
+  
+  // 2a. Handle double dots (..) FIRST (highest priority)
+  
+  // Check if keyword followed by .. → both become fullstops
+  FULLSTOP_KEYWORDS.forEach(keyword => {
+    const keywordDoubleDot = new RegExp(`\\b${escapeRegex(keyword)}\\.\\.`, 'g');
+    result = result.replace(keywordDoubleDot, `${keyword}🔴FULLSTOP🔴🔴FULLSTOP🔴`);
   });
   
-  // Step 2: Handle dots - decimal vs regular
-  // Decimal: digit.digit → &#69; (NO SPACE)
-  result = result.replace(/(\d)\[\[P0\]\](\d)/g, '$1[[DECIMAL]]$2');
-  // Regular dot: → &#8901; (AFTER SINGLE SPACE)
-  result = result.replace(/\[\[P0\]\]/g, '[[DOT]]');
+  // Check if punctuation followed by .. → both become fullstops
+  const punctDoubleDot = /([,;:!)\]}>?\-\+\(\[\{<~`@#$%^&*=|\\\/])\.\./g;
+  result = result.replace(punctDoubleDot, '$1🔴FULLSTOP🔴🔴FULLSTOP🔴');
   
-  // Step 3: Replace placeholders with codes (without adding spaces yet)
-  PUNCTUATION_MAP.forEach((item, index) => {
-    const placeholder = `[[P${index}]]`;
-    result = result.split(placeholder).join(item.code);
+  // Regular double dots (no entity before) → first is dot, second is fullstop
+  result = result.replace(/\.\./g, '🟢DOT🟢🔴FULLSTOP🔴');
+  
+  // 2b. Mark dot after ANY single punctuation as fullstop
+  const punctAfterDot = /([,;:!)\]}>?\-\+\(\[\{<~`@#$%^&*=|\\\/])\./g;
+  result = result.replace(punctAfterDot, '$1🔴FULLSTOP🔴');
+  
+  // 2c. Mark dot after company keywords as fullstop (case-sensitive)
+  FULLSTOP_KEYWORDS.forEach(keyword => {
+    const keywordPattern = new RegExp(`\\b${escapeRegex(keyword)}\\.`, 'g');
+    result = result.replace(keywordPattern, `${keyword}🔴FULLSTOP🔴`);
   });
   
-  result = result.replace(/\[\[DECIMAL\]\]/g, '&#69;');
-  result = result.replace(/\[\[DOT\]\]/g, '&#8901;');
+  // 2c. Mark decimals (digit.digit)
+  result = result.replace(/(\d)\.(\d)/g, '$1🔵DECIMAL🔵$2');
   
-  // Step 4: Add spacing intelligently (always add, even at end of line)
-  PUNCTUATION_MAP.forEach((item) => {
+  // 2d. Remaining dots are regular dots
+  result = result.replace(/\./g, '🟢DOT🟢');
+  
+  // STEP 3: Replace punctuation with codes
+  PUNCTUATION_MAP.forEach(item => {
+    if (item.char !== '.') {
+      const escaped = escapeRegex(item.char);
+      result = result.replace(new RegExp(escaped, 'g'), item.code);
+    }
+  });
+  
+  // Replace dot markers with codes
+  result = result.replace(/🔴FULLSTOP🔴/g, '&#39;');
+  result = result.replace(/🔵DECIMAL🔵/g, '&#69;');
+  result = result.replace(/🟢DOT🟢/g, '&#8901;');
+  
+  // STEP 4: Add spacing
+  PUNCTUATION_MAP.forEach(item => {
     const code = escapeRegex(item.code);
     
     switch (item.spacing) {
       case 'after':
-        // Add space after code (always, even at end)
         result = result.replace(new RegExp(`${code}(?! )`, 'g'), `${item.code} `);
         break;
       case 'before':
-        // Add space before code (always, even at start)
         result = result.replace(new RegExp(`(?<! )${code}`, 'g'), ` ${item.code}`);
         break;
       case 'both':
-        // Add spaces on both sides (always)
         result = result.replace(new RegExp(`(?<! )${code}(?! )`, 'g'), ` ${item.code} `);
         result = result.replace(new RegExp(`(?<! )${code} `, 'g'), ` ${item.code} `);
         result = result.replace(new RegExp(` ${code}(?! )`, 'g'), ` ${item.code} `);
@@ -133,19 +218,13 @@ export const applyPunctuationWithSpacing = (text) => {
     }
   });
   
-  // Add space after dot code (always, even at end)
+  // Add spacing for dot codes
   result = result.replace(/&#8901;(?! )/g, '&#8901; ');
   
-  // Step 5: Clean multiple spaces (but preserve single spaces)
-  result = result.replace(/\s{2,}/g, ' ').trim();
+  // Add DOUBLE spacing for fullstop
+  result = result.replace(/&#39;(?!  )/g, '&#39;  ');
   
-  // Step 6: Handle quotes with alternating left/right and smart spacing
-  // Single quotes: &lsquo; (left) and &rsquo; (right)
-  // Double quotes: &ldquo; (left) and &rdquo; (right)
-  // 
-  // SPACING RULES (ALWAYS APPLIED, even at line boundaries):
-  // - Left quote: ALWAYS space BEFORE
-  // - Right quote: ALWAYS space AFTER
+  // STEP 5: Handle quotes
   let isSingleQuoteOpen = true;
   let isDoubleQuoteOpen = true;
   let output = '';
@@ -156,35 +235,21 @@ export const applyPunctuationWithSpacing = (text) => {
     const nextChar = i < result.length - 1 ? result[i + 1] : '';
     
     if (char === "'") {
-      // Single quote - alternating left/right
       if (isSingleQuoteOpen) {
-        // Left single quote - ALWAYS space BEFORE (if prev char is not already space)
-        if (prevChar !== ' ') {
-          output += ' ';
-        }
+        if (prevChar !== ' ') output += ' ';
         output += '&lsquo;';
       } else {
-        // Right single quote - ALWAYS space AFTER (if next char is not already space)
         output += '&rsquo;';
-        if (nextChar !== ' ') {
-          output += ' ';
-        }
+        if (nextChar !== ' ') output += ' ';
       }
       isSingleQuoteOpen = !isSingleQuoteOpen;
     } else if (char === '"') {
-      // Double quote - alternating left/right
       if (isDoubleQuoteOpen) {
-        // Left double quote - ALWAYS space BEFORE (if prev char is not already space)
-        if (prevChar !== ' ') {
-          output += ' ';
-        }
+        if (prevChar !== ' ') output += ' ';
         output += '&ldquo;';
       } else {
-        // Right double quote - ALWAYS space AFTER (if next char is not already space)
         output += '&rdquo;';
-        if (nextChar !== ' ') {
-          output += ' ';
-        }
+        if (nextChar !== ' ') output += ' ';
       }
       isDoubleQuoteOpen = !isDoubleQuoteOpen;
     } else {
@@ -192,44 +257,37 @@ export const applyPunctuationWithSpacing = (text) => {
     }
   }
   
-  // DON'T trim - we need the spaces at start/end!
-  output = output.replace(/\s{2,}/g, ' ');
+  // Clean up multiple spaces (preserve double after fullstop)
+  output = output.replace(/\s{3,}/g, '  ');
   
   return output;
 };
 
 /**
- * Apply punctuation without spacing (for links)
- * 
- * @param {string} text - Text to process
- * @returns {string} - Processed text with HTML codes, no spaces
+ * Processing function without spacing (for websites)
  */
 export const applyPunctuationNoSpacing = (text) => {
   if (!text) return '';
   
   let result = text.trim();
-  
-  // Remove ALL spaces
   result = result.replace(/\s+/g, '');
   
-  // Step 1: Replace with placeholders
-  PUNCTUATION_MAP.forEach((item, index) => {
-    result = result.split(item.char).join(`[[P${index}]]`);
+  // Mark decimals
+  result = result.replace(/(\d)\.(\d)/g, '$1🔵DECIMAL🔵$2');
+  result = result.replace(/\./g, '🟢DOT🟢');
+  
+  // Replace punctuation
+  PUNCTUATION_MAP.forEach(item => {
+    if (item.char !== '.') {
+      const escaped = escapeRegex(item.char);
+      result = result.replace(new RegExp(escaped, 'g'), item.code);
+    }
   });
   
-  // Step 2: Handle dots
-  result = result.replace(/(\d)\[\[P0\]\](\d)/g, '$1[[DECIMAL]]$2');
-  result = result.replace(/\[\[P0\]\]/g, '[[DOT]]');
+  result = result.replace(/🔵DECIMAL🔵/g, '&#69;');
+  result = result.replace(/🟢DOT🟢/g, '&#8901;');
   
-  // Step 3: Replace placeholders with codes (NO spacing)
-  PUNCTUATION_MAP.forEach((item, index) => {
-    result = result.split(`[[P${index}]]`).join(item.code);
-  });
-  
-  result = result.replace(/\[\[DECIMAL\]\]/g, '&#69;');
-  result = result.replace(/\[\[DOT\]\]/g, '&#8901;');
-  
-  // Step 4: Handle quotes (no spacing)
+  // Handle quotes (no spacing)
   let isSingleQuoteOpen = true;
   let isDoubleQuoteOpen = true;
   let output = '';
@@ -252,12 +310,7 @@ export const applyPunctuationNoSpacing = (text) => {
 };
 
 /**
- * Generic function (backwards compatible)
- * 
- * @param {string} text - Text to process
- * @param {boolean} isWebLink - If true, removes spaces
- * @param {boolean} addQuotes - Not used (kept for compatibility)
- * @returns {string} - Processed text
+ * Generic wrapper (backwards compatible)
  */
 export const applyPunctuation = (text, isWebLink = false, addQuotes = false) => {
   if (isWebLink) {
@@ -266,32 +319,3 @@ export const applyPunctuation = (text, isWebLink = false, addQuotes = false) => 
     return applyPunctuationWithSpacing(text);
   }
 };
-
-/**
- * ============================================================================
- * OFFICIAL 20 PUNCTUATION CODES SUMMARY
- * ============================================================================
- * 
- * 1.  Dot: . → &#8901; (after single space)
- * 2.  Decimal: . → &#69; (no space) - between numbers only
- * 3.  Fullstop: . → &#39; (after double space) - NOT AUTO-CONVERTED
- * 4.  Comma: , → &#44; (after single space)
- * 5.  Semicolon: ; → &#59; (after single space)
- * 6.  Colon: : → &#58; (after single space)
- * 7.  Hyphen: - → &#45; (one space before and after)
- * 8.  Forward Slash: / → &#47; (no space)
- * 9.  Back Slash: \ → &#92; (no space)
- * 10. Left Parenthesis: ( → &#40; (before single space)
- * 11. Right Parenthesis: ) → &#41; (after single space)
- * 12. Left Single Quote: ' → &lsquo; (before single space)
- * 13. Right Single Quote: ' → &rsquo; (after single space)
- * 14. Left Double Quote: " → &ldquo; (before single space)
- * 15. Right Double Quote: " → &rdquo; (after single space)
- * 16. Exclamation: ! → &#33; (after single space)
- * 17. Plus sign: + → &#43; (one space before and after)
- * 18. Less than sign: < → &#60; (before single space)
- * 19. Greater than sign: > → &#62; (after single space)
- * 20. Underscore: _ → &#95; (no space)
- * 
- * ============================================================================
- */

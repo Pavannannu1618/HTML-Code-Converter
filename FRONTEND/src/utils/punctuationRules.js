@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * PUNCTUATION RULES - COMPANY APPROVED VERSION
+ * PUNCTUATION RULES - FIXED SEMICOLON ISSUE
  * ============================================================================
  * 
  * Features:
@@ -9,15 +9,13 @@
  * 3. Dot after company-specific keywords = fullstop (&#39;) with DOUBLE space
  * 4. Always add spacing, even at end of line
  * 5. Smart quote handling with proper spacing
+ * 6. FIX: Don't convert semicolons that are part of HTML entity codes
  * 
  * ============================================================================
  */
 
 /**
  * COMPANY-SPECIFIC KEYWORDS (CASE-SENSITIVE!)
- * 
- * Per company rules: After these specific words, dot becomes fullstop.
- * This list is maintained by the company and will be updated as needed.
  */
 const FULLSTOP_KEYWORDS = [
   'China', 'china', 'CHINA', 
@@ -115,12 +113,12 @@ const FULLSTOP_KEYWORDS = [
 ];
 
 /**
- * Official 20 punctuation codes
+ * Official 20 punctuation codes (semicolon handled separately)
  */
 const PUNCTUATION_MAP = [
   { char: '.', code: '&#8901;', spacing: 'after' },
   { char: ',', code: '&#44;', spacing: 'after' },
-  { char: ';', code: '&#59;', spacing: 'after' },
+  // semicolon handled separately to avoid HTML entity conflicts
   { char: ':', code: '&#58;', spacing: 'after' },
   { char: '-', code: '&#45;', spacing: 'both' },
   { char: '/', code: '&#47;', spacing: 'none' },
@@ -180,15 +178,15 @@ export const applyPunctuationWithSpacing = (text) => {
     result = result.replace(keywordPattern, `${keyword}🔴FULLSTOP🔴`);
   });
   
-  // 2c. Mark decimals (digit.digit)
+  // 2d. Mark decimals (digit.digit)
   result = result.replace(/(\d)\.(\d)/g, '$1🔵DECIMAL🔵$2');
   
-  // 2d. Remaining dots are regular dots
+  // 2e. Remaining dots are regular dots
   result = result.replace(/\./g, '🟢DOT🟢');
   
-  // STEP 3: Replace punctuation with codes
+  // STEP 3: Replace punctuation with codes (EXCEPT semicolon and dot)
   PUNCTUATION_MAP.forEach(item => {
-    if (item.char !== '.') {
+    if (item.char !== '.') { // Dot already handled
       const escaped = escapeRegex(item.char);
       result = result.replace(new RegExp(escaped, 'g'), item.code);
     }
@@ -198,6 +196,27 @@ export const applyPunctuationWithSpacing = (text) => {
   result = result.replace(/🔴FULLSTOP🔴/g, '&#39;');
   result = result.replace(/🔵DECIMAL🔵/g, '&#69;');
   result = result.replace(/🟢DOT🟢/g, '&#8901;');
+  
+  // NOW handle semicolons AFTER all HTML entity codes are in place
+  // Only convert standalone semicolons, not those in HTML entities (&#44;, &#39;, etc.)
+  result = result.replace(/;/g, (match, offset, string) => {
+    // Check if this semicolon is part of an HTML entity
+    // Look back up to 10 characters
+    const lookback = string.substring(Math.max(0, offset - 10), offset);
+    
+    // If we find &#digits before this semicolon, it's part of an entity
+    if (/&#\d+$/.test(lookback)) {
+      return ';'; // Keep it as-is
+    }
+    
+    // If we find &word before this semicolon, it's part of a named entity
+    if (/&[a-z]+$/i.test(lookback)) {
+      return ';'; // Keep it as-is
+    }
+    
+    // Otherwise, convert it
+    return '&#59;';
+  });
   
   // STEP 4: Add spacing
   PUNCTUATION_MAP.forEach(item => {
@@ -223,6 +242,9 @@ export const applyPunctuationWithSpacing = (text) => {
   
   // Add DOUBLE spacing for fullstop
   result = result.replace(/&#39;(?!  )/g, '&#39;  ');
+  
+  // Add spacing for semicolon code (after it's been converted)
+  result = result.replace(/&#59;(?! )/g, '&#59; ');
   
   // STEP 5: Handle quotes
   let isSingleQuoteOpen = true;
@@ -276,7 +298,7 @@ export const applyPunctuationNoSpacing = (text) => {
   result = result.replace(/(\d)\.(\d)/g, '$1🔵DECIMAL🔵$2');
   result = result.replace(/\./g, '🟢DOT🟢');
   
-  // Replace punctuation
+  // Replace punctuation (except semicolon)
   PUNCTUATION_MAP.forEach(item => {
     if (item.char !== '.') {
       const escaped = escapeRegex(item.char);
@@ -286,6 +308,15 @@ export const applyPunctuationNoSpacing = (text) => {
   
   result = result.replace(/🔵DECIMAL🔵/g, '&#69;');
   result = result.replace(/🟢DOT🟢/g, '&#8901;');
+  
+  // Handle semicolons (same logic - avoid HTML entities)
+  result = result.replace(/;/g, (match, offset, string) => {
+    const lookback = string.substring(Math.max(0, offset - 10), offset);
+    if (/&#\d+$/.test(lookback) || /&[a-z]+$/i.test(lookback)) {
+      return ';';
+    }
+    return '&#59;';
+  });
   
   // Handle quotes (no spacing)
   let isSingleQuoteOpen = true;

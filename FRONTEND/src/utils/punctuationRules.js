@@ -104,8 +104,10 @@ const FULLSTOP_KEYWORDS = [
   'network', 'Network', 'NETWORK', 
   'technologic', 'Technologic', 'TECHNOLOGIC', 
   'technologically', 'Technologically', 'TECHNOLOGICALLY',
-  'Marketing', 'marketing', 'MARKETING'
-  
+  'Marketing', 'marketing', 'MARKETING',
+  'new', 'New', 'NEW', 
+  'old', 'Old', 'OLD',
+  // Add more as needed
   // Standard abbreviations
   // 'Inc', 'Ltd', 'Corp', 'Co', 'LLC', 'LLP', 'Pty', 'Assoc', 'Bros',
   // 'Ave', 'St', 'Rd', 'Dr', 'Blvd', 'Ln', 'Ct', 'Pl', 'Ste', 'Suite', 'Apt', 'Bldg', 'Fl', 'Floor',

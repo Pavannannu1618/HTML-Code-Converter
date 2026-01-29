@@ -1,5 +1,23 @@
-import { applyPunctuation } from '../punctuationRules';
+import { applyPunctuationWithSpacing } from '../punctuationRules';
 import { parseCSVLine } from '../csvParser';
+
+/**
+ * Apply punctuation with optional quote wrapping
+ */
+const applyPunctuationWithQuotes = (text, isWebLink = false, addQuotes = false) => {
+  if (!text) return '';
+  
+  // Process punctuation
+  let result = applyPunctuationWithSpacing(text);
+  
+  // Add quotes if requested
+  if (addQuotes) {
+    result = result.trim();
+    result = ` &ldquo;${result}&rdquo; `;
+  }
+  
+  return result;
+};
 
 /**
  * Process 2 Rows Format
@@ -88,11 +106,12 @@ export const process2RowsFormat = (lines) => {
     }
     
     // Apply punctuation rules 
-    const processedCode = applyPunctuation(code, false, false);
-    const processedLocation = applyPunctuation(location, false, false);
-    const processedName = applyPunctuation(name, false, false);
+    // All fields use WITH spacing (keywords work)
+    const processedCode = applyPunctuationWithQuotes(code, false, false);
+    const processedLocation = applyPunctuationWithQuotes(location, false, false);
+    const processedName = applyPunctuationWithQuotes(name, false, false);
     // Address always gets quotes in 2 Rows format
-    const processedAddress = applyPunctuation(address, false, true);
+    const processedAddress = applyPunctuationWithQuotes(address, false, true);
     
     htmlOutput += `<doctypehtml${counter}>\n<html>\n<body>\n`;
     htmlOutput += processedCode + '\n';
@@ -113,4 +132,24 @@ export const process2RowsFormat = (lines) => {
   }
   
   return { htmlOutput, dataArray };
+};
+
+/**
+ * Validate 2 Rows input
+ */
+export const validate2RowsInput = (lines) => {
+  if (!lines || lines.length === 0) {
+    return { valid: false, error: 'No data to process.' };
+  }
+  
+  const nonEmptyLines = lines.filter(line => line.trim());
+  if (nonEmptyLines.length === 0) {
+    return { valid: false, error: 'File contains only empty lines.' };
+  }
+  
+  return {
+    valid: true,
+    expectedRecords: nonEmptyLines.length,
+    message: `Ready to process ${nonEmptyLines.length} 2 Rows records`
+  };
 };

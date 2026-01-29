@@ -1,27 +1,29 @@
+/**
+ * ============================================================================
+ * BOOK PAGE FORMAT PROCESSOR - FINAL VERSION
+ * ============================================================================
+ * 
+ * Structure (2 fields per record):
+ * - Line 1: Address - WITH SPACING
+ * - Line 2: Link (HTML/CSS) - NO SPACING
+ * 
+ * ============================================================================
+ */
 
-import { applyPunctuation } from '../punctuationRules';
+import { applyPunctuationWithSpacing, applyPunctuationNoSpacing } from '../punctuationRules';
 
-const formatAddressText = (text) => applyPunctuation(text, false, false);
+const formatAddressText = (text) => {
+  if (!text) return '';
+  return applyPunctuationWithSpacing(text);
+};
+
 const formatLinkText = (text) => {
   if (!text) return '';
   let processed = text.trim().replace(/""/g, '"').replace(/\s+/g, '');
-  processed = applyPunctuation(processed, true, false);
-  
-  // Quote conversion
-  let isOpen = false;
-  let output = '';
-  for (let i = 0; i < processed.length; i++) {
-    if (processed[i] === '"') {
-      output += isOpen ? '&rdquo;' : '&ldquo;';
-      isOpen = !isOpen;
-    } else {
-      output += processed[i];
-    }
-  }
-  return output;
+  return applyPunctuationNoSpacing(processed);
 };
-  
-  const parseCSVLine = (line) => {
+
+const parseCSVLine = (line) => {
   const fields = [];
   let currentField = '';
   let insideQuotes = false;
@@ -60,9 +62,6 @@ const formatLinkText = (text) => {
   return fields;
 };
 
-/**
- * Detect CSV format
- */
 const detectFormat = (line) => {
   if (!line) return 'comma';
   
@@ -78,9 +77,6 @@ const detectFormat = (line) => {
   return 'comma';
 };
 
-/**
- * Extract fields based on format
- */
 const extractFields = (line, format) => {
   if (format === 'comma') {
     const fields = parseCSVLine(line);
@@ -92,16 +88,6 @@ const extractFields = (line, format) => {
   }
 };
 
-// ============================================================================
-// MAIN PROCESSOR
-// ============================================================================
-
-/**
- * Process Book Page Format
- * 
- * @param {Array<string>} lines - Lines from uploaded file
- * @returns {Object} { htmlOutput: string, dataArray: Array }
- */
 export const processBookPageFormat = (lines) => {
   let htmlOutput = '';
   let dataArray = [];
@@ -119,7 +105,6 @@ export const processBookPageFormat = (lines) => {
     const { address, link } = extractFields(line, format);
     if (!address.trim() && !link.trim()) continue;
     
-    // Use existing punctuation rules!
     const processedAddress = formatAddressText(address);
     const processedLink = formatLinkText(link);
     
@@ -141,10 +126,6 @@ export const processBookPageFormat = (lines) => {
   
   return { htmlOutput, dataArray };
 };
-
-// ============================================================================
-// VALIDATION
-// ============================================================================
 
 export const validateBookPageInput = (lines) => {
   if (!lines || lines.length === 0) {

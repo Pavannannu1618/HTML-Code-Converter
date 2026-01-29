@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * AD PAGE FORMAT PROCESSOR
+ * AD PAGE FORMAT PROCESSOR - FINAL VERSION
  * ============================================================================
  * 
  * Structure (3 fields per record):
@@ -11,8 +11,6 @@
  * CSV Format: "Name+Address",Link
  * - First field contains Name""Address (double quotes separate them)
  * - Second field is the link/HTML code
- * 
- * Similar to 2 Rows format but outputs 3 lines instead of 4
  * 
  * ============================================================================
  */
@@ -72,19 +70,16 @@ const parseCSVLine = (line) => {
     const nextChar = line[i + 1];
     
     if (char === '"') {
-      // Handle escaped quotes ("")
       if (insideQuotes && nextChar === '"') {
         currentField += '"';
         i += 2;
         continue;
       }
-      // Toggle quote state
       insideQuotes = !insideQuotes;
       i++;
       continue;
     }
     
-    // Split on comma only when outside quotes
     if (char === ',' && !insideQuotes) {
       fields.push(currentField);
       currentField = '';
@@ -96,7 +91,6 @@ const parseCSVLine = (line) => {
     i++;
   }
   
-  // Add last field
   if (currentField || fields.length > 0) {
     fields.push(currentField);
   }
@@ -110,14 +104,12 @@ const parseCSVLine = (line) => {
 const detectFormat = (line) => {
   if (!line) return 'comma';
   
-  // Check for comma separator (not inside quotes)
   let insideQuotes = false;
   for (let i = 0; i < line.length; i++) {
     if (line[i] === '"') insideQuotes = !insideQuotes;
     if (line[i] === ',' && !insideQuotes) return 'comma';
   }
   
-  // Check for large spaces (space-separated format)
   const cleanLine = line.replace(/^"/, '').replace(/"$/, '');
   if (/\s{10,}/.test(cleanLine)) return 'space';
   
@@ -126,14 +118,6 @@ const detectFormat = (line) => {
 
 /**
  * Split company name and address - FINAL CORRECT VERSION
- * 
- * Rule: If entities are side-by-side (only punctuation/abbreviation fragments between), use LAST
- *       Otherwise use FIRST
- * 
- * Examples:
- * "COMPANY, L. L. C :" → Only ", L. L. C :" between → Use LAST (L.L.C)
- * "C.O RP AMERICA" → "RP AMERICA" between → Use FIRST (C.O)
- * "INC. ACIC LTD" → "ACIC LTD" between → Use FIRST (INC.)
  */
 const splitCompanyNameAndAddress = (combined) => {
   if (!combined) return { name: '', address: '' };
@@ -141,7 +125,7 @@ const splitCompanyNameAndAddress = (combined) => {
   const text = combined.trim();
   if (!text) return { name: '', address: '' };
   
-  // Define entity patterns - FIXED to handle spaces in abbreviations
+  // Define entity patterns
   const entityPatterns = [
     /\b(COMPANY|COMPANIES)\b/gi,
     /\b(CORPORATION)\b/gi,
@@ -151,12 +135,12 @@ const splitCompanyNameAndAddress = (combined) => {
     /\b(INCORPORATED)\b/gi,
     /\b(INC\.?)\b/gi,
     /\b(C\.O\.?)\b/gi,
-    /\b(L\.\s*P\.?|LP)\b/gi,              // Match "L.P" or "L. P" with optional space
-    /\b(L\.\s*L\.\s*C\.?|LLC)\b/gi,       // Match "L.L.C" or "L. L. C" with optional spaces
+    /\b(L\.\s*P\.?|LP)\b/gi,
+    /\b(L\.\s*L\.\s*C\.?|LLC)\b/gi,
     /\b(LLP)\b/gi,
     /\b(S\.A\.?)\b/gi,
     /\b(A\.G\.?)\b/gi,
-    /\b(I\.\s*N\.\s*C\.?)\b/gi,           // Match "I.N.C" with optional spaces
+    /\b(I\.\s*N\.\s*C\.?)\b/gi,
     /\b(PLC)\b/gi
   ];
   
@@ -224,11 +208,10 @@ const splitCompanyNameAndAddress = (combined) => {
     return { name: text, address: '' };
   }
   
-  // One entity - split after it (plus trailing punctuation)
+  // One entity - split after it
   if (uniqueEntities.length === 1) {
     let splitPoint = uniqueEntities[0].end;
     
-    // Include trailing punctuation as part of name
     const afterEntity = text.substring(splitPoint);
     const trailingPunct = afterEntity.match(/^[\s,:;]*/);
     if (trailingPunct) {
@@ -242,29 +225,16 @@ const splitCompanyNameAndAddress = (combined) => {
   }
   
   // Multiple entities - check what's between them
-  // "Side by side" means only punctuation and single-letter abbreviations (like "L. L. C")
   let useLastEntity = true;
   
   for (let i = 0; i < uniqueEntities.length - 1; i++) {
     const current = uniqueEntities[i];
     const next = uniqueEntities[i + 1];
     
-    // Get text between entities
     const between = text.substring(current.end, next.start).trim();
-    
-    // Check for REAL WORDS (not just abbreviation fragments)
-    // Real words = sequences of 3+ capital letters that look like words
-    // "LOGISTICS PARTNERS" = real words
-    // ", L. L. C" = just abbreviation fragments
-    
-    // Remove all punctuation and dots
     const cleanedBetween = between.replace(/[,.:;\s]/g, '');
     
-    // If what remains is short (< 5 chars), it's probably just abbreviation fragments
-    // "LLC" = 3 chars → abbreviation
-    // "LOGISTICSPARTNERS" = 17 chars → real words
     if (cleanedBetween.length >= 5) {
-      // Long enough to be real words, use FIRST entity
       useLastEntity = false;
       break;
     }
@@ -276,7 +246,6 @@ const splitCompanyNameAndAddress = (combined) => {
   
   let splitPoint = entityToUse.end;
   
-  // Include trailing punctuation as part of name
   const afterEntity = text.substring(splitPoint);
   const trailingPunct = afterEntity.match(/^[\s,:;]*/);
   if (trailingPunct) {
@@ -294,7 +263,6 @@ const splitCompanyNameAndAddress = (combined) => {
  */
 const extractFields = (line, format) => {
   if (format === 'comma') {
-    // Format 1: "Name+Address",Link
     const fields = parseCSVLine(line);
     const nameAndAddress = fields[0] || '';
     const link = fields[1] || '';
@@ -303,7 +271,6 @@ const extractFields = (line, format) => {
     
     return { name, address, link };
   } else {
-    // Format 2: "Name+Address          Link" (space-separated)
     const cleanLine = line.replace(/^"/, '').replace(/"$/, '');
     const parts = cleanLine.split(/\s{10,}/);
     
@@ -316,25 +283,14 @@ const extractFields = (line, format) => {
   }
 };
 
-
-
 /**
  * Process AD Page Format
- * 
- * Each record has 3 lines:
- * 1. Company Name Part 1 (with spacing)
- * 2. Company Name Part 2 + Address (with spacing)
- * 3. Link (no spacing)
- * 
- * @param {Array<string>} lines - Lines from uploaded file
- * @returns {Object} { htmlOutput: string, dataArray: Array }
  */
 export const processADPageFormat = (lines) => {
   let htmlOutput = '';
   let dataArray = [];
   let counter = 1;
 
-  // Auto-detect format
   const firstLine = lines.find(line => line.trim());
   const format = firstLine ? detectFormat(firstLine) : 'comma';
   
@@ -344,10 +300,8 @@ export const processADPageFormat = (lines) => {
     const line = lines[i];
     if (!line || !line.trim()) continue;
     
-    // Extract 3 fields
     const { name, address, link } = extractFields(line, format);
     
-    // Skip if all empty
     if (!name.trim() && !address.trim() && !link.trim()) continue;
     
     // Apply formatting rules
@@ -365,7 +319,6 @@ export const processADPageFormat = (lines) => {
     htmlOutput += `</body>\n`;
     htmlOutput += `</html>\n`;
     
-    // Add to data array
     dataArray.push({
       'HTML Tag': `doctypehtml${counter}`,
       'Company Name': processedName,
@@ -380,8 +333,6 @@ export const processADPageFormat = (lines) => {
   
   return { htmlOutput, dataArray };
 };
-
-
 
 /**
  * Validate AD Page input

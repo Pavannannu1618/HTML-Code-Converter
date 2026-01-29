@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * PUNCTUATION RULES - FIXED SEMICOLON ISSUE
+ * PUNCTUATION RULES - FINAL VERSION WITH ALL FIXES
  * ============================================================================
  * 
  * Features:
@@ -10,6 +10,7 @@
  * 4. Always add spacing, even at end of line
  * 5. Smart quote handling with proper spacing
  * 6. FIX: Don't convert semicolons that are part of HTML entity codes
+ * 7. FIX: Link fields detect fullstops after punctuation AND keywords
  * 
  * ============================================================================
  */
@@ -107,8 +108,12 @@ const FULLSTOP_KEYWORDS = [
   'Marketing', 'marketing', 'MARKETING',
   'new', 'New', 'NEW', 
   'old', 'Old', 'OLD',
-  // Add more as needed
-  // Standard abbreviations
+  'next', 'Next', 'NEXT',
+  'Promise', 'promise', 'PROMISE',
+  'brothers', 'Brothers', 'BROTHERS',
+  'brother', 'Brother', 'BROTHER'
+  
+  // Standard abbreviations commented out per user request
   // 'Inc', 'Ltd', 'Corp', 'Co', 'LLC', 'LLP', 'Pty', 'Assoc', 'Bros',
   // 'Ave', 'St', 'Rd', 'Dr', 'Blvd', 'Ln', 'Ct', 'Pl', 'Ste', 'Suite', 'Apt', 'Bldg', 'Fl', 'Floor',
   // 'Mr', 'Mrs', 'Ms', 'Miss', 'Prof', 'Sr', 'Jr', 'Esq',
@@ -256,25 +261,46 @@ export const applyPunctuationWithSpacing = (text) => {
   
   for (let i = 0; i < result.length; i++) {
     const char = result[i];
-    const prevChar = i > 0 ? result[i - 1] : '';
     const nextChar = i < result.length - 1 ? result[i + 1] : '';
     
     if (char === "'") {
       if (isSingleQuoteOpen) {
-        if (prevChar !== ' ') output += ' ';
+        // Left single quote - check if we need space before
+        const needsSpaceBefore = output.length > 0 && 
+                                 !output.endsWith(' ') && 
+                                 !output.endsWith(';');
+        
+        if (needsSpaceBefore && output.length > 0) {
+          if (/;$/.test(output)) {
+            output += ' ';
+          } else if (!/ $/.test(output)) {
+            output += ' ';
+          }
+        }
         output += '&lsquo;';
       } else {
+        // Right single quote - always add space after
         output += '&rsquo;';
-        if (nextChar !== ' ') output += ' ';
+        if (nextChar !== ' ' && nextChar !== '') {
+          output += ' ';
+        }
       }
       isSingleQuoteOpen = !isSingleQuoteOpen;
     } else if (char === '"') {
       if (isDoubleQuoteOpen) {
-        if (prevChar !== ' ') output += ' ';
+        // Left double quote - check if we need space before
+        const needsSpaceBefore = output.length > 0 && !output.endsWith(' ');
+        
+        if (needsSpaceBefore) {
+          output += ' ';
+        }
         output += '&ldquo;';
       } else {
+        // Right double quote - always add space after
         output += '&rdquo;';
-        if (nextChar !== ' ') output += ' ';
+        if (nextChar !== ' ' && nextChar !== '') {
+          output += ' ';
+        }
       }
       isDoubleQuoteOpen = !isDoubleQuoteOpen;
     } else {
@@ -289,19 +315,37 @@ export const applyPunctuationWithSpacing = (text) => {
 };
 
 /**
- * Processing function without spacing (for websites)
+ * Processing function without spacing (for link fields)
+ * 
+ * CRITICAL FIX: Even in no-spacing mode, we MUST detect fullstops:
+ * 1. Dot after ANY punctuation (including _) = fullstop
+ * 2. Dot after keywords = fullstop
+ * Then remove all spaces after processing.
  */
 export const applyPunctuationNoSpacing = (text) => {
   if (!text) return '';
   
   let result = text.trim();
-  result = result.replace(/\s+/g, '');
   
-  // Mark decimals
-  result = result.replace(/(\d)\.(\d)/g, '$1🔵DECIMAL🔵$2');
+  // STEP 1: Detect fullstops BEFORE removing spaces
+  
+  // 1a. Mark dot after ANY punctuation as fullstop (including underscore)
+  const punctAfterDot = /([,;:!)\]}>?\-\+\(\[\{<~`@#$%^&*=|\\\/\_])\./g;
+  result = result.replace(punctAfterDot, '$1🔴FULLSTOP🔴');
+  
+  // 1b. Mark dot after keywords as fullstop (case-sensitive)
+  FULLSTOP_KEYWORDS.forEach(keyword => {
+    const keywordPattern = new RegExp(`\\b${escapeRegex(keyword)}\\.`, 'g');
+    result = result.replace(keywordPattern, `${keyword}🔴FULLSTOP🔴`);
+  });
+  
+  // 1c. Remaining dots are regular dots
   result = result.replace(/\./g, '🟢DOT🟢');
   
-  // Replace punctuation (except semicolon)
+  // STEP 2: NOW remove all spaces
+  result = result.replace(/\s+/g, '');
+  
+  // STEP 3: Replace punctuation with codes
   PUNCTUATION_MAP.forEach(item => {
     if (item.char !== '.') {
       const escaped = escapeRegex(item.char);
@@ -309,10 +353,11 @@ export const applyPunctuationNoSpacing = (text) => {
     }
   });
   
-  result = result.replace(/🔵DECIMAL🔵/g, '&#69;');
+  // STEP 4: Replace dot markers with codes (NO SPACING in link mode)
+  result = result.replace(/🔴FULLSTOP🔴/g, '&#39;');
   result = result.replace(/🟢DOT🟢/g, '&#8901;');
   
-  // Handle semicolons (same logic - avoid HTML entities)
+  // STEP 5: Handle semicolons (protect HTML entities)
   result = result.replace(/;/g, (match, offset, string) => {
     const lookback = string.substring(Math.max(0, offset - 10), offset);
     if (/&#\d+$/.test(lookback) || /&[a-z]+$/i.test(lookback)) {
@@ -321,7 +366,7 @@ export const applyPunctuationNoSpacing = (text) => {
     return '&#59;';
   });
   
-  // Handle quotes (no spacing)
+  // STEP 6: Handle quotes (no spacing)
   let isSingleQuoteOpen = true;
   let isDoubleQuoteOpen = true;
   let output = '';

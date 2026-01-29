@@ -1,12 +1,14 @@
-import { applyPunctuation } from '../punctuationRules';
+import { applyPunctuationWithSpacing, applyPunctuationNoSpacing } from '../punctuationRules';
 import { parseCSVLine } from '../csvParser';
 
 /**
  * Process Website Format
  * CSV Format: Address,Name1,Name2,Website (4 fields per line)
  * 
- * IMPORTANT: CSV quotes (for fields with commas) should be removed, NOT converted!
- * Only convert quotes that are actually INSIDE the data.
+ * CRITICAL RULES:
+ * 1. Fields 1-3 (Address, Name1, Name2): Use applyPunctuationWithSpacing() - Keywords work
+ * 2. Field 4 (Website): Use applyPunctuationNoSpacing() - ALL dots are &#8901;
+ * 3. Triple quotes """ in CSV = add &ldquo; &rdquo; in output
  */
 export const processWebsiteFormat = (lines) => {
   let htmlOutput = '';
@@ -22,10 +24,9 @@ export const processWebsiteFormat = (lines) => {
       const line = lines[i];
       
       // CRITICAL: Detect which fields have TRIPLE quotes (intentional quotes)
-      // vs single quotes (CSV formatting)
       const hasTripleQuotes = detectTripleQuotes(line);
       
-      // Parse the CSV line - this automatically removes quotes
+      // Parse the CSV line
       const columns = parseCSVLine(line);
       
       if (columns.length < 4) continue;
@@ -36,28 +37,35 @@ export const processWebsiteFormat = (lines) => {
       let name2 = (columns[2] || '').trim();
       let website = (columns[3] || '').trim();
       
-      // Add back quotes ONLY for fields that had TRIPLE quotes (intentional)
-      if (hasTripleQuotes[0]) address = '"' + address + '"';
-      if (hasTripleQuotes[1]) name1 = '"' + name1 + '"';
-      if (hasTripleQuotes[2]) name2 = '"' + name2 + '"';
-      if (hasTripleQuotes[3]) website = '"' + website + '"';
-      
-      // Clean up any escaped quotes inside the data: "" → "
+      // Clean up escaped quotes from CSV: "" → "
       address = address.replace(/""/g, '"');
       name1 = name1.replace(/""/g, '"');
       name2 = name2.replace(/""/g, '"');
       website = website.replace(/""/g, '"');
       
-      // Remove spaces from website
-      const cleanWebsite = website.replace(/\s+/g, '');
+      // Remove the CSV wrapper quotes if they exist (field had triple quotes)
+      if (hasTripleQuotes[0] && address.startsWith('"') && address.endsWith('"')) {
+        address = address.slice(1, -1);
+      }
+      if (hasTripleQuotes[1] && name1.startsWith('"') && name1.endsWith('"')) {
+        name1 = name1.slice(1, -1);
+      }
+      if (hasTripleQuotes[2] && name2.startsWith('"') && name2.endsWith('"')) {
+        name2 = name2.slice(1, -1);
+      }
+      if (hasTripleQuotes[3] && website.startsWith('"') && website.endsWith('"')) {
+        website = website.slice(1, -1);
+      }
       
       // Apply punctuation rules
-      // Now if there are quotes INSIDE the data (like Company "Best" Products),
-      // they will be converted. But CSV formatting quotes are gone.
-      const processedAddress = applyPunctuation(address, false, false);
-      const processedName1 = applyPunctuation(name1, false, false);
-      const processedName2 = applyPunctuation(name2, false, false);
-      const processedWebsite = applyPunctuation(cleanWebsite, true, false);
+      // Fields 1-3: Smart detection (keywords work)
+      const processedAddress = applyPunctuationWithQuotes(address, false, hasTripleQuotes[0]);
+      const processedName1 = applyPunctuationWithQuotes(name1, false, hasTripleQuotes[1]);
+      const processedName2 = applyPunctuationWithQuotes(name2, false, hasTripleQuotes[2]);
+      
+      // Field 4 (Website): NO keyword detection, ALL dots are &#8901;
+      const cleanWebsite = website.replace(/\s+/g, ''); // Remove spaces
+      const processedWebsite = applyPunctuationNoSpacing(cleanWebsite);
       
       // Build HTML - Address first!
       htmlOutput += `<doctypehtml${counter}>\n<html>\n<body>\n`;
@@ -85,20 +93,32 @@ export const processWebsiteFormat = (lines) => {
       let name2 = (lines[i + 2] || '').trim();
       let website = (lines[i + 3] || '').trim();
       
+      // Check for quotes in text format
+      const hasQuotesAddress = address.startsWith('"') && address.endsWith('"');
+      const hasQuotesName1 = name1.startsWith('"') && name1.endsWith('"');
+      const hasQuotesName2 = name2.startsWith('"') && name2.endsWith('"');
+      const hasQuotesWebsite = website.startsWith('"') && website.endsWith('"');
+      
+      // Remove wrapper quotes if present
+      if (hasQuotesAddress) address = address.slice(1, -1);
+      if (hasQuotesName1) name1 = name1.slice(1, -1);
+      if (hasQuotesName2) name2 = name2.slice(1, -1);
+      if (hasQuotesWebsite) website = website.slice(1, -1);
+      
       // Clean escaped quotes: "" → "
       address = address.replace(/""/g, '"');
       name1 = name1.replace(/""/g, '"');
       name2 = name2.replace(/""/g, '"');
       website = website.replace(/""/g, '"');
       
-      // Remove spaces from website
-      const cleanWebsite = website.replace(/\s+/g, '');
-      
       // Apply punctuation rules
-      const processedAddress = applyPunctuation(address, false, false);
-      const processedName1 = applyPunctuation(name1, false, false);
-      const processedName2 = applyPunctuation(name2, false, false);
-      const processedWebsite = applyPunctuation(cleanWebsite, true, false);
+      const processedAddress = applyPunctuationWithQuotes(address, false, hasQuotesAddress);
+      const processedName1 = applyPunctuationWithQuotes(name1, false, hasQuotesName1);
+      const processedName2 = applyPunctuationWithQuotes(name2, false, hasQuotesName2);
+      
+      // Website field: NO keyword detection
+      const cleanWebsite = website.replace(/\s+/g, '');
+      const processedWebsite = applyPunctuationNoSpacing(cleanWebsite);
       
       // Build HTML - Address first!
       htmlOutput += `<doctypehtml${counter}>\n<html>\n<body>\n`;
@@ -124,8 +144,27 @@ export const processWebsiteFormat = (lines) => {
 };
 
 /**
+ * Apply punctuation with optional quote wrapping
+ */
+const applyPunctuationWithQuotes = (text, isWebLink = false, addQuotes = false) => {
+  if (!text) return '';
+  
+  // Process punctuation
+  let result = isWebLink 
+    ? applyPunctuationNoSpacing(text)
+    : applyPunctuationWithSpacing(text);
+  
+  // Add quotes if requested
+  if (addQuotes && !isWebLink) {
+    result = result.trim();
+    result = ` &ldquo;${result}&rdquo; `;
+  }
+  
+  return result;
+};
+
+/**
  * Detect which fields have TRIPLE quotes (intentional quotes to convert)
- * vs single quotes (CSV formatting to remove)
  * Returns array of booleans: [field0HasTripleQuotes, field1HasTripleQuotes, ...]
  */
 function detectTripleQuotes(line) {
@@ -137,7 +176,6 @@ function detectTripleQuotes(line) {
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
     const nextChar = line[i + 1];
-    const nextNextChar = line[i + 2];
     
     // Track quote state
     if (char === '"') {

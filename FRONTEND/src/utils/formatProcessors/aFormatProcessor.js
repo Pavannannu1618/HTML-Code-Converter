@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * A FORMAT PROCESSOR
+ * A FORMAT PROCESSOR - FINAL VERSION
  * ============================================================================
  * 
  * Structure (4 fields per record):
@@ -9,58 +9,28 @@
  * - Line 3: Company Name - WITH SPACING
  * - Line 4: Details - WITH SPACING
  * 
- * CSV Format: CompanyName1,Address,CompanyName2,Details (4 fields on one line)
- * OR
- * Text Format: 4 separate lines per record
- * 
- * All fields use spacing around punctuation
+ * All fields use spacing around punctuation (keywords work)
  * 
  * ============================================================================
  */
 
-// ============================================================================
-// IMPORTS - Use shared punctuation rules
-// ============================================================================
+import { applyPunctuationWithSpacing } from '../punctuationRules.js';
 
-import { 
-  applyPunctuationWithSpacing 
-} from '../punctuationRules.js';
-
-// ============================================================================
-// FORMAT-SPECIFIC FUNCTIONS
-// ============================================================================
-
-/**
- * Format Company Name fields (Lines 1 & 3) - WITH spacing
- */
 const formatCompanyName = (text) => {
   if (!text) return '';
   return applyPunctuationWithSpacing(text);
 };
 
-/**
- * Format Address (Line 2) - WITH spacing
- */
 const formatAddress = (text) => {
   if (!text) return '';
   return applyPunctuationWithSpacing(text);
 };
 
-/**
- * Format Details (Line 4) - WITH spacing
- */
 const formatDetails = (text) => {
   if (!text) return '';
   return applyPunctuationWithSpacing(text);
 };
 
-// ============================================================================
-// CSV PARSING
-// ============================================================================
-
-/**
- * Parse CSV line with proper quote handling
- */
 const parseCSVLine = (line) => {
   const fields = [];
   let currentField = '';
@@ -100,32 +70,14 @@ const parseCSVLine = (line) => {
   return fields;
 };
 
-// ============================================================================
-// MAIN PROCESSOR
-// ============================================================================
-
-/**
- * Process A Format
- * 
- * Each record has 4 lines:
- * 1. Company Name (with spacing)
- * 2. Address (with spacing)
- * 3. Company Name (with spacing)
- * 4. Details (with spacing)
- * 
- * @param {Array<string>} lines - Lines from uploaded file
- * @returns {Object} { htmlOutput: string, dataArray: Array }
- */
 export const processAFormat = (lines) => {
   let htmlOutput = '';
   let dataArray = [];
   let counter = 1;
 
-  // Check if first line contains commas (CSV format) or not (text format)
   const isCsvFormat = lines[0] && lines[0].includes(',');
 
   if (isCsvFormat) {
-    // CSV FORMAT: One line per record with 4 columns
     console.log('📄 A Format: CSV format detected');
     
     for (let i = 0; i < lines.length; i++) {
@@ -139,13 +91,11 @@ export const processAFormat = (lines) => {
       const companyName2 = columns[2] || '';
       const details = columns[3] || '';
       
-      // Apply formatting
       const processedCompanyName1 = formatCompanyName(companyName1);
       const processedAddress = formatAddress(address);
       const processedCompanyName2 = formatCompanyName(companyName2);
       const processedDetails = formatDetails(details);
       
-      // Build HTML
       htmlOutput += `<doctypehtml${counter}>\n`;
       htmlOutput += `<html>\n`;
       htmlOutput += `<body>\n`;
@@ -156,7 +106,6 @@ export const processAFormat = (lines) => {
       htmlOutput += `</body>\n`;
       htmlOutput += `</html>\n`;
       
-      // Add to data array
       dataArray.push({
         'HTML Tag': `doctypehtml${counter}`,
         'Company Name 1': processedCompanyName1,
@@ -168,7 +117,6 @@ export const processAFormat = (lines) => {
       counter++;
     }
   } else {
-    // TEXT FORMAT: 4 lines per record
     console.log('📄 A Format: Text format detected');
     
     for (let i = 0; i < lines.length; i += 4) {
@@ -177,13 +125,11 @@ export const processAFormat = (lines) => {
       const companyName2 = lines[i + 2] || '';
       const details = lines[i + 3] || '';
       
-      // Apply formatting
       const processedCompanyName1 = formatCompanyName(companyName1);
       const processedAddress = formatAddress(address);
       const processedCompanyName2 = formatCompanyName(companyName2);
       const processedDetails = formatDetails(details);
       
-      // Build HTML
       htmlOutput += `<doctypehtml${counter}>\n`;
       htmlOutput += `<html>\n`;
       htmlOutput += `<body>\n`;
@@ -194,7 +140,6 @@ export const processAFormat = (lines) => {
       htmlOutput += `</body>\n`;
       htmlOutput += `</html>\n`;
       
-      // Add to data array
       dataArray.push({
         'HTML Tag': `doctypehtml${counter}`,
         'Company Name 1': processedCompanyName1,
@@ -212,9 +157,6 @@ export const processAFormat = (lines) => {
   return { htmlOutput, dataArray };
 };
 
-/**
- * Validate A Format input
- */
 export const validateAFormatInput = (lines) => {
   if (!lines || lines.length === 0) {
     return { valid: false, error: 'No data to process.' };

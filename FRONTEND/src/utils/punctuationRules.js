@@ -153,7 +153,19 @@ const FULLSTOP_KEYWORDS = [
   'base', 'Base', 'BASE',
   'hub', 'Hub', 'HUB',
   'unit', 'Unit', 'UNIT',
-  "Texas", "texas", "TEXAS"
+  "Texas", "texas", "TEXAS", 
+  'arrow', 'Arrow', 'ARROW',
+  'Build', 'build', 'BUILD',
+  "Building", "building", "BUILDING",
+  'builders', 'Builders', 'BUILDERS',
+  'builder', 'Builder', 'BUILDER',
+  'construct', 'Construct', 'CONSTRUCT',
+  'construction', 'Construction', 'CONSTRUCTION',
+  'constructors', 'Constructors', 'CONSTRUCTORS',
+  'constructor', 'Constructor', 'CONSTRUCTOR',
+  'ball', 'Ball', 'BALL',
+  'qingdao', 'Qingdao', 'QINGDAO',
+  'mainsion', 'Mainsion', 'MAINSION'
   
   // Standard abbreviations commented out per user request
   // 'Inc', 'Ltd', 'Corp', 'Co', 'LLC', 'LLP', 'Pty', 'Assoc', 'Bros',

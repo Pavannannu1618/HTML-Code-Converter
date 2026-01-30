@@ -12,16 +12,20 @@ const formatField = (text) => {
 /**
  * Apply punctuation WITH quotes for address field
  */
-const formatAddress = (text) => {
+const formatAddress = (text, shouldAddQuotes) => {
   if (!text) return '';
   const processed = applyPunctuationWithSpacing(text);
-  // Wrap in quotes with spaces
-  return ` &ldquo;${processed.trim()}&rdquo; `;
+  
+  // Only add quotes if they were in the original data
+  if (shouldAddQuotes) {
+    return ` &ldquo;${processed.trim()}&rdquo; `;
+  }
+  
+  return processed;
 };
 
 /**
  * Extract code from first field
- * Find the LAST DIGIT, everything after is location
  */
 const extractCodeAndLocation = (text) => {
   if (!text) return { code: '', location: '' };
@@ -42,7 +46,7 @@ const extractCodeAndLocation = (text) => {
     return { code, location };
   }
   
-  // Fallback: Look for capital letter followed by lowercase (like "Tampa")
+  // Fallback
   const match = text.match(/^([A-Z0-9]+)([A-Z][a-z].*)$/);
   if (match) {
     return {
@@ -51,84 +55,31 @@ const extractCodeAndLocation = (text) => {
     };
   }
   
-  // Last fallback: treat entire text as code
   return { code: text.trim(), location: '' };
 };
 
 /**
- * Company entity keywords - these END the company name
+ * Company entity keywords
  */
 const COMPANY_ENTITIES = [
-  // Limited variations
-  'PRIVATE LIMITED', 'LIMITED',
-  'PVT LTD.', 'PVT LTD', 'PVT. LTD',
-  'LTD.', 'LTD',
-  
-  // Incorporation variations
-  'INCORPORATION', 'INCORPORATED',
-  'INC.', 'INC',
-  
-  // Corporation variations
-  'CORPORATION',
-  'CORP.', 'CORP',
-  
-  // Partnership variations
-  'LIMITED LIABILITY PARTNERSHIP',
-  'LLP.', 'LLP',
-  
-  // Company variations
-  'LIMITED LIABILITY COMPANY',
-  'LLC.', 'LLC',
-  
-  // Limited Partnership
-  'LIMITED PARTNERSHIP',
-  'LP.', 'LP',
-  
-  // Company
-  'COMPANY',
-  'CO.', 'CO',
-  
-  // PLC
-  'PROGRAMMABLE LOGIC CONTROLLER',
-  'PLC.', 'PLC',
-  
-  // Agency
-  'AGENCY',
-  'AG.', 'AG',
-  
-  // Organization
-  'ORGANIZATION',
-  'ORG.', 'ORG',
-  
-  // German GMBH
-  'GESELLSCHAFT MIT BESCHRÄNKTER HAFTUNG',
-  'GMBH.', 'GMBH',
-  
-  // Limited Liability
-  'LIMITED LIABILITY',
-  'LL.', 'LL',
-  
-  // SRL
-  'SALAZAR RESOURCES LIMITED',
-  'SRL.', 'SRL',
-  
-  // // Laboratories
-  // 'LABORATORIES',
-  // 'LABS.', 'LABS',
-  
-  // // SA (Sociedad Anónima)
-  // 'SA.', 'SA',
-  
-  // // AB (Swedish)
-  // 'AB.', 'AB',
-  
-  // // KG/KGA (German partnership)
-  // 'KGAA.', 'KGAA',
-  // 'KG.', 'KG'
+'LIMITED', 'LTD.,','LTD,.', 'LTD,', 'LTD.',
+  'PRIVATE LIMITED','PVT LTD.,', 'PVT LTD,.', 'PVT. LTD', 'PVT LTD.',
+  'INCORPORATION', 'INC.,','INC,.', 'INC,', 'INC.',
+  'CORPORATION', 'CORP.,','CORP,.', 'CORP,', 'CORP.',
+  'LIMITED LIABILITY PARTNERSHIP', 'LLP.,','LLP,.', 'LLP.',"LLP,",'LLP',
+  'LIMITED LIABILITY COMPANY', 'LLC.,','LLC,.', 'LLC,', 'LLC.',
+  'LIMITED PARTNERSHIP', 'LP.,', 'LP,.',' LP,', 'LP.','LP',
+  'COMPANY', 'CO.,', 'CO,.','CO.', 'CO,','CO',
+  'PROGRAMMABLE LOGIC CONTROLLER', 'PLC.', 'PLC',
+  'AGENCY', 'AG.,', 'AG,.', 'AG,', 'AG.','AG',
+  'ORGANIZATION', 'ORG.,', 'ORG,.', 'ORG,', 'ORG.','ORG',
+  'GESELLSCHAFT MIT BESCHRÄNKTER HAFTUNG', 'GMBH.,', 'GMBH,.', 'GMBH,', 'GMBH.', 'GMBH',
+  'LIMITED LIABILITY', 'LL.,','LL,.',  'LL,', 'LL.', 'LL',
+  'SALAZAR RESOURCES LIMITED', 'SRL.,', 'SRL,.', 'SRL,', 'SRL.', 'SRL'
 ];
 
 /**
- * Find all entity matches in text and return the LAST one
+ * Find last entity
  */
 const findLastEntity = (text) => {
   const sortedEntities = [...COMPANY_ENTITIES].sort((a, b) => b.length - a.length);
@@ -154,65 +105,43 @@ const findLastEntity = (text) => {
     return null;
   }
   
-  // Sort by position (earliest to latest)
   matches.sort((a, b) => a.start - b.start);
-  
-  // Return the LAST match (rightmost entity)
-  let lastMatch = matches[matches.length - 1];
-  
-  for (let i = matches.length - 2; i >= 0; i--) {
-    const current = matches[i];
-    const next = matches[i + 1];
-    
-    // If entities are within 10 characters of each other, they're a group
-    const gap = next.start - current.end;
-    if (gap <= 10) {
-      continue;
-    } else {
-      break;
-    }
-  }
-  
-  return lastMatch;
+  return matches[matches.length - 1];
 };
 
 /**
- * Split company name and address from combined field
- * 
- * Priority order:
- * 1. Triple/double quotes
- * 2. Quote after entity (INC."Address)
- * 3. Comma separator
- * 4. Entity keywords
- * 5. Street number
- * 6. Fallback
+ * Split company name and address
+ * Returns: { name, address, hasQuotes }
  */
 const splitNameAndAddress = (text) => {
-  if (!text) return { name: '', address: '' };
+  if (!text) return { name: '', address: '', hasQuotes: false };
   
   const trimmed = text.trim();
   
-  // Pattern 1: Triple quotes pattern (""Name""Address""")
+  // Check if original text has quote marks (indicates formatted with quotes)
+  const hasQuotes = trimmed.includes('"');
+  
+  // Pattern 1: Triple quotes
   let match = trimmed.match(/^""(.+?)""(.+?)"""$/);
   if (match) {
     return {
       name: match[1].trim(),
-      address: match[2].trim()
+      address: match[2].trim(),
+      hasQuotes: true
     };
   }
   
-  // Pattern 2: Double quotes pattern (""Name""Address"")
+  // Pattern 2: Double quotes
   match = trimmed.match(/^""(.+?)""(.+?)""$/);
   if (match) {
     return {
       name: match[1].trim(),
-      address: match[2].trim()
+      address: match[2].trim(),
+      hasQuotes: true
     };
   }
   
-  // Pattern 3: Quote separator (ALWAYS split at quote!)
-  // CSV: "CINTICHEM INC.""1 East 45th Street..." → CINTICHEM INC."1 East 45th Street...
-  // CSV: "COSMA SPA""2489 Walden Ave..." → COSMA SPA"2489 Walden Ave...
+  // Pattern 3: Quote separator (split at quote)
   const quoteIndex = trimmed.indexOf('"');
   if (quoteIndex > 0) {
     const beforeQuote = trimmed.substring(0, quoteIndex).trim();
@@ -220,27 +149,27 @@ const splitNameAndAddress = (text) => {
     
     return {
       name: beforeQuote,
-      address: afterQuote.replace(/^"+|"+$/g, '') // Remove surrounding quotes
+      address: afterQuote.replace(/^"+|"+$/g, ''),
+      hasQuotes: true
     };
   }
   
-  // Pattern 4: Look for comma as separator (most common)
+  // Pattern 4: Comma separator
   const commaIndex = trimmed.indexOf(',');
   if (commaIndex !== -1) {
     return {
       name: trimmed.substring(0, commaIndex).trim(),
-      address: trimmed.substring(commaIndex + 1).trim()
+      address: trimmed.substring(commaIndex + 1).trim(),
+      hasQuotes: false
     };
   }
   
-  // Pattern 5: Look for company entity keywords (multi-entity handling)
+  // Pattern 5: Entity keywords
   const lastEntity = findLastEntity(trimmed);
   
   if (lastEntity) {
-    // Split after this entity
     let splitPoint = lastEntity.end;
     
-    // Check if there's punctuation or space after the entity
     const afterEntity = trimmed.substring(splitPoint);
     const punctMatch = afterEntity.match(/^[,.\s]+/);
     if (punctMatch) {
@@ -249,26 +178,27 @@ const splitNameAndAddress = (text) => {
     
     return {
       name: trimmed.substring(0, splitPoint).trim(),
-      address: trimmed.substring(splitPoint).trim()
+      address: trimmed.substring(splitPoint).trim(),
+      hasQuotes: false
     };
   }
   
-  // Pattern 6: Look for street number (ONLY if no entity found)
+  // Pattern 6: Street number (ONLY if no entity found)
   const streetMatch = trimmed.match(/^(.+?)(\d{1,5}\s+[A-Z])/);
   if (streetMatch) {
     return {
       name: streetMatch[1].trim(),
-      address: trimmed.substring(streetMatch[1].length).trim()
+      address: trimmed.substring(streetMatch[1].length).trim(),
+      hasQuotes: false
     };
   }
   
-  // Pattern 7: Fallback - entire text is name
-  return { name: trimmed, address: '' };
+  // Fallback
+  return { name: trimmed, address: '', hasQuotes: false };
 };
 
 /**
  * Process 2 Rows Format
- * CSV Format: CodeLocation,"CompanyName,Address"
  */
 export const process2RowsFormat = (lines) => {
   let htmlOutput = '';
@@ -281,23 +211,22 @@ export const process2RowsFormat = (lines) => {
     const line = lines[i];
     if (!line || !line.trim()) continue;
     
-    // Parse CSV line
     const columns = parseCSVLine(line);
     
     if (columns.length < 2) continue;
     
-    // Column 1: Code + Location (combined like "A10BA02SAN FRANCISCO")
+    // Column 1: Code + Location
     const { code, location } = extractCodeAndLocation(columns[0] || '');
     
     // Column 2: Company Name + Address
-    const { name, address } = splitNameAndAddress(columns[1] || '');
+    const { name, address, hasQuotes } = splitNameAndAddress(columns[1] || '');
     
-    // Apply punctuation to all fields
+    // Apply punctuation
     const processedCode = formatField(code);
     const processedLocation = formatField(location);
     const processedName = formatField(name);
-    // Address gets quotes wrapped around it
-    const processedAddress = formatAddress(address);
+    // Only add quotes if they were in the original data
+    const processedAddress = formatAddress(address, hasQuotes);
     
     // Build HTML
     htmlOutput += `<doctypehtml${counter}>\n`;

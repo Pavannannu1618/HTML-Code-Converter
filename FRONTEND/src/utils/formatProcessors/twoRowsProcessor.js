@@ -10,19 +10,18 @@ const formatField = (text) => {
 };
 
 /**
+ * Apply punctuation WITH quotes for address field
+ */
+const formatAddress = (text) => {
+  if (!text) return '';
+  const processed = applyPunctuationWithSpacing(text);
+  // Wrap in quotes with spaces
+  return ` &ldquo;${processed.trim()}&rdquo; `;
+};
+
+/**
  * Extract code from first field
- * CRITICAL FIX: Don't split on space if the space is within a multi-word location
- * 
- * Pattern: 
- * - Code is alphanumeric (A10BA02)
- * - Location can be one word (TAMPA) or multiple words (SAN FRANCISCO, LONG BEACH)
- * 
- * Strategy: Find where numbers END, location starts there
- * 
- * Examples:
- * A10BA02SAN FRANCISCO → A10BA02 | SAN FRANCISCO
- * B01AC04TAMPA → B01AC04 | TAMPA
- * C02ABLONG BEACH → C02AB | LONG BEACH
+ * Find the LAST DIGIT, everything after is location
  */
 const extractCodeAndLocation = (text) => {
   if (!text) return { code: '', location: '' };
@@ -60,31 +59,76 @@ const extractCodeAndLocation = (text) => {
  * Company entity keywords - these END the company name
  */
 const COMPANY_ENTITIES = [
-  'LIMITED', 'LTD.,','LTD,.', 'LTD,', 'LTD.',
-  'PRIVATE LIMITED','PVT LTD.,', 'PVT LTD,.', 'PVT. LTD', 'PVT LTD.',
-  'INCORPORATION', 'INC.,','INC,.', 'INC,', 'INC.',
-  'CORPORATION', 'CORP.,','CORP,.', 'CORP,', 'CORP.',
-  'LIMITED LIABILITY PARTNERSHIP', 'LLP.,','LLP,.', 'LLP.',"LLP,",'LLP',
-  'LIMITED LIABILITY COMPANY', 'LLC.,','LLC,.', 'LLC,', 'LLC.',
-  'LIMITED PARTNERSHIP', 'LP.,', 'LP,.',' LP,', 'LP.','LP',
-  'COMPANY', 'CO.,', 'CO,.','CO.', 'CO,','CO',
-  'PROGRAMMABLE LOGIC CONTROLLER', 'PLC.', 'PLC',
-  'AGENCY', 'AG.,', 'AG,.', 'AG,', 'AG.','AG',
-  'ORGANIZATION', 'ORG.,', 'ORG,.', 'ORG,', 'ORG.','ORG',
-  'GESELLSCHAFT MIT BESCHRÄNKTER HAFTUNG', 'GMBH.,', 'GMBH,.', 'GMBH,', 'GMBH.', 'GMBH',
-  'LIMITED LIABILITY', 'LL.,','LL,.',  'LL,', 'LL.', 'LL',
-  'SALAZAR RESOURCES LIMITED', 'SRL.,', 'SRL,.', 'SRL,', 'SRL.', 'SRL'
+  // Limited variations
+  'PRIVATE LIMITED', 'LIMITED',
+  'PVT LTD.', 'PVT LTD', 'PVT. LTD',
+  'LTD.', 'LTD',
+  
+  // Incorporation variations
+  'INCORPORATION', 'INCORPORATED',
+  'INC.', 'INC',
+  
+  // Corporation variations
+  'CORPORATION',
+  'CORP.', 'CORP',
+  
+  // Partnership variations
+  'LIMITED LIABILITY PARTNERSHIP',
+  'LLP.', 'LLP',
+  
+  // Company variations
+  'LIMITED LIABILITY COMPANY',
+  'LLC.', 'LLC',
+  
+  // Limited Partnership
+  'LIMITED PARTNERSHIP',
+  'LP.', 'LP',
+  
+  // Company
+  'COMPANY',
+  'CO.', 'CO',
+  
+  // PLC
+  'PROGRAMMABLE LOGIC CONTROLLER',
+  'PLC.', 'PLC',
+  
+  // Agency
+  'AGENCY',
+  'AG.', 'AG',
+  
+  // Organization
+  'ORGANIZATION',
+  'ORG.', 'ORG',
+  
+  // German GMBH
+  'GESELLSCHAFT MIT BESCHRÄNKTER HAFTUNG',
+  'GMBH.', 'GMBH',
+  
+  // Limited Liability
+  'LIMITED LIABILITY',
+  'LL.', 'LL',
+  
+  // SRL
+  'SALAZAR RESOURCES LIMITED',
+  'SRL.', 'SRL',
+  
+  // // Laboratories
+  // 'LABORATORIES',
+  // 'LABS.', 'LABS',
+  
+  // // SA (Sociedad Anónima)
+  // 'SA.', 'SA',
+  
+  // // AB (Swedish)
+  // 'AB.', 'AB',
+  
+  // // KG/KGA (German partnership)
+  // 'KGAA.', 'KGAA',
+  // 'KG.', 'KG'
 ];
 
 /**
  * Find all entity matches in text and return the LAST one
- * 
- * CRITICAL RULE: If two entities are side by side (like "CO KG"), 
- * split after the SECOND entity, not the first!
- * 
- * Example:
- * "TROPONWERKE GMBH CO KG" has entities: GMBH, CO, KG
- * → Split after KG (the last one)
  */
 const findLastEntity = (text) => {
   const sortedEntities = [...COMPANY_ENTITIES].sort((a, b) => b.length - a.length);
@@ -113,8 +157,7 @@ const findLastEntity = (text) => {
   // Sort by position (earliest to latest)
   matches.sort((a, b) => a.start - b.start);
   
-  // Check if we have multiple entities close together (within 10 characters)
-  // If yes, return the LAST one in the group
+  // Return the LAST match (rightmost entity)
   let lastMatch = matches[matches.length - 1];
   
   for (let i = matches.length - 2; i >= 0; i--) {
@@ -124,11 +167,8 @@ const findLastEntity = (text) => {
     // If entities are within 10 characters of each other, they're a group
     const gap = next.start - current.end;
     if (gap <= 10) {
-      // Keep looking backwards for more entities in the group
       continue;
     } else {
-      // Found a gap, so the "next" entity starts a new group
-      // We want the last entity in the LAST group
       break;
     }
   }
@@ -141,10 +181,10 @@ const findLastEntity = (text) => {
  * 
  * Priority order:
  * 1. Triple/double quotes
- * 2. Comma separator
- * 3. Entity keywords (with multi-entity handling)
- * 4. Street number (ONLY if no entity found)
- * 5. Quote marks
+ * 2. Quote after entity (INC."Address)
+ * 3. Comma separator
+ * 4. Entity keywords
+ * 5. Street number
  * 6. Fallback
  */
 const splitNameAndAddress = (text) => {
@@ -170,7 +210,21 @@ const splitNameAndAddress = (text) => {
     };
   }
   
-  // Pattern 3: Look for comma as separator (most common)
+  // Pattern 3: Quote separator (ALWAYS split at quote!)
+  // CSV: "CINTICHEM INC.""1 East 45th Street..." → CINTICHEM INC."1 East 45th Street...
+  // CSV: "COSMA SPA""2489 Walden Ave..." → COSMA SPA"2489 Walden Ave...
+  const quoteIndex = trimmed.indexOf('"');
+  if (quoteIndex > 0) {
+    const beforeQuote = trimmed.substring(0, quoteIndex).trim();
+    const afterQuote = trimmed.substring(quoteIndex + 1).trim();
+    
+    return {
+      name: beforeQuote,
+      address: afterQuote.replace(/^"+|"+$/g, '') // Remove surrounding quotes
+    };
+  }
+  
+  // Pattern 4: Look for comma as separator (most common)
   const commaIndex = trimmed.indexOf(',');
   if (commaIndex !== -1) {
     return {
@@ -179,8 +233,7 @@ const splitNameAndAddress = (text) => {
     };
   }
   
-  // Pattern 4: Look for company entity keywords
-  // CRITICAL: Use the LAST entity if multiple entities found
+  // Pattern 5: Look for company entity keywords (multi-entity handling)
   const lastEntity = findLastEntity(trimmed);
   
   if (lastEntity) {
@@ -200,22 +253,12 @@ const splitNameAndAddress = (text) => {
     };
   }
   
-  // Pattern 5: Look for street number (ONLY if no entity found)
-  // This catches: "SLOAN-KETTERING INST CANCER RES1920 Bellaire..."
+  // Pattern 6: Look for street number (ONLY if no entity found)
   const streetMatch = trimmed.match(/^(.+?)(\d{1,5}\s+[A-Z])/);
   if (streetMatch) {
     return {
       name: streetMatch[1].trim(),
       address: trimmed.substring(streetMatch[1].length).trim()
-    };
-  }
-  
-  // Pattern 6: Look for quote marks
-  const quoteIndex = trimmed.indexOf('"');
-  if (quoteIndex > 0) {
-    return {
-      name: trimmed.substring(0, quoteIndex).trim(),
-      address: trimmed.substring(quoteIndex).replace(/"/g, '').trim()
     };
   }
   
@@ -249,11 +292,12 @@ export const process2RowsFormat = (lines) => {
     // Column 2: Company Name + Address
     const { name, address } = splitNameAndAddress(columns[1] || '');
     
-    // Apply punctuation to all fields (NO AUTO-QUOTES!)
+    // Apply punctuation to all fields
     const processedCode = formatField(code);
     const processedLocation = formatField(location);
     const processedName = formatField(name);
-    const processedAddress = formatField(address);
+    // Address gets quotes wrapped around it
+    const processedAddress = formatAddress(address);
     
     // Build HTML
     htmlOutput += `<doctypehtml${counter}>\n`;

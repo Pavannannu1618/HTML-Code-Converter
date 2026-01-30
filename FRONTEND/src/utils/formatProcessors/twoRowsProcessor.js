@@ -60,72 +60,20 @@ const extractCodeAndLocation = (text) => {
  * Company entity keywords - these END the company name
  */
 const COMPANY_ENTITIES = [
-  // Limited variations
-  'PRIVATE LIMITED', 'LIMITED',
-  'PVT LTD.', 'PVT LTD', 'PVT. LTD',
-  'LTD.', 'LTD',
-  
-  // Incorporation variations
-  'INCORPORATION', 'INCORPORATED',
-  'INC.', 'INC',
-  
-  // Corporation variations
-  'CORPORATION',
-  'CORP.', 'CORP',
-  
-  // Partnership variations
-  'LIMITED LIABILITY PARTNERSHIP',
-  'LLP.', 'LLP',
-  
-  // Company variations
-  'LIMITED LIABILITY COMPANY',
-  'LLC.', 'LLC',
-  
-  // Limited Partnership
-  'LIMITED PARTNERSHIP',
-  'LP.', 'LP',
-  
-  // Company
-  'COMPANY',
-  'CO.', 'CO',
-  
-  // PLC
-  'PROGRAMMABLE LOGIC CONTROLLER',
-  'PLC.', 'PLC',
-  
-  // Agency
-  'AGENCY',
-  'AG.', 'AG',
-  
-  // Organization
-  'ORGANIZATION',
-  'ORG.', 'ORG',
-  
-  // German GMBH
-  'GESELLSCHAFT MIT BESCHRÄNKTER HAFTUNG',
-  'GMBH.', 'GMBH',
-  
-  // Limited Liability
-  'LIMITED LIABILITY',
-  'LL.', 'LL',
-  
-  // SRL
-  'SALAZAR RESOURCES LIMITED',
-  'SRL.', 'SRL',
-  
-  // // Laboratories
-  // 'LABORATORIES',
-  // 'LABS.', 'LABS',
-  
-  // // SA (Sociedad Anónima)
-  // 'SA.', 'SA',
-  
-  // // AB (Swedish)
-  // 'AB.', 'AB',
-  
-  // // KG/KGA (German partnership)
-  // 'KGAA.', 'KGAA',
-  // 'KG.', 'KG'
+  'LIMITED', 'LTD.,','LTD,.', 'LTD,', 'LTD.',
+  'PRIVATE LIMITED','PVT LTD.,', 'PVT LTD,.', 'PVT. LTD', 'PVT LTD.',
+  'INCORPORATION', 'INC.,','INC,.', 'INC,', 'INC.',
+  'CORPORATION', 'CORP.,','CORP,.', 'CORP,', 'CORP.',
+  'LIMITED LIABILITY PARTNERSHIP', 'LLP.,','LLP,.', 'LLP.',"LLP,",'LLP',
+  'LIMITED LIABILITY COMPANY', 'LLC.,','LLC,.', 'LLC,', 'LLC.',
+  'LIMITED PARTNERSHIP', 'LP.,', 'LP,.',' LP,', 'LP.','LP',
+  'COMPANY', 'CO.,', 'CO,.','CO.', 'CO,','CO',
+  'PROGRAMMABLE LOGIC CONTROLLER', 'PLC.', 'PLC',
+  'AGENCY', 'AG.,', 'AG,.', 'AG,', 'AG.','AG',
+  'ORGANIZATION', 'ORG.,', 'ORG,.', 'ORG,', 'ORG.','ORG',
+  'GESELLSCHAFT MIT BESCHRÄNKTER HAFTUNG', 'GMBH.,', 'GMBH,.', 'GMBH,', 'GMBH.', 'GMBH',
+  'LIMITED LIABILITY', 'LL.,','LL,.',  'LL,', 'LL.', 'LL',
+  'SALAZAR RESOURCES LIMITED', 'SRL.,', 'SRL,.', 'SRL,', 'SRL.', 'SRL'
 ];
 
 /**

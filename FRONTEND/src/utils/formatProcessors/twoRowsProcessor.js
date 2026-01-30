@@ -79,7 +79,7 @@ const extractCodeAndLocation = (text) => {
  * Company entity keywords
  */
 const COMPANY_ENTITIES = [
-   'LIMITED', 'LTD.,','LTD,.', 'LTD,', 'LTD.',
+  'LIMITED', 'LTD.,','LTD,.', 'LTD,', 'LTD.',
   'PRIVATE LIMITED','PVT LTD.,', 'PVT LTD,.', 'PVT. LTD', 'PVT LTD.',
   'INCORPORATION', 'INC.,','INC,.', 'INC,', 'INC.',
   'CORPORATION', 'CORP.,','CORP,.', 'CORP,', 'CORP.',
@@ -140,9 +140,9 @@ const findLastEntity = (text) => {
  * Priority:
  * 1. Triple/double quotes
  * 2. Quote separator
- * 3. Comma separator
- * 4. LAST entity (rightmost)
- * 5. Street number
+ * 3. Entity keywords (last/rightmost entity)
+ * 4. Street number
+ * 5. Capital letters pattern
  * 6. Fallback
  */
 const splitNameAndAddress = (text) => {
@@ -186,17 +186,7 @@ const splitNameAndAddress = (text) => {
     };
   }
   
-  // Pattern 4: Comma separator
-  const commaIndex = trimmed.indexOf(',');
-  if (commaIndex !== -1) {
-    return {
-      name: trimmed.substring(0, commaIndex).trim(),
-      address: trimmed.substring(commaIndex + 1).trim(),
-      hasQuotes: false
-    };
-  }
-  
-  // Pattern 5: LAST entity (rightmost) - CRITICAL FIX!
+  // Pattern 4: LAST entity (rightmost)
   const lastEntity = findLastEntity(trimmed);
   
   if (lastEntity) {
@@ -216,7 +206,7 @@ const splitNameAndAddress = (text) => {
     };
   }
   
-  // Pattern 6: Street number
+  // Pattern 5: Street number
   const streetMatch = trimmed.match(/^(.+?)(\d{1,5}\s+[A-Z])/);
   if (streetMatch) {
     return {
@@ -224,6 +214,42 @@ const splitNameAndAddress = (text) => {
       address: trimmed.substring(streetMatch[1].length).trim(),
       hasQuotes: false
     };
+  }
+  
+  // Pattern 6: Capital letters pattern (LAST RESORT before fallback)
+  // If nothing else works, split at second-to-last capital letter that starts a word
+  // Example: "KNOLL AG CHEMISCHE FABRIKEN1191 North Fiesta"
+  // Find capital letters that start words: K, A, C, F, N, F
+  // Split before second-to-last: "...FABRIKEN" | "1191..."
+  
+  // Find all positions where capital letter starts a word
+  const capitalPositions = [];
+  for (let i = 0; i < trimmed.length; i++) {
+    const char = trimmed[i];
+    const prevChar = i > 0 ? trimmed[i - 1] : ' ';
+    
+    // Capital letter that starts a word (preceded by space, start of string, or punctuation)
+    if (/[A-Z]/.test(char) && /[\s\-,.]/.test(prevChar)) {
+      capitalPositions.push(i);
+    }
+  }
+  
+  // Need at least 2 capital positions to use this pattern
+  if (capitalPositions.length >= 2) {
+    // Get second-to-last capital letter position
+    const splitIndex = capitalPositions[capitalPositions.length - 2];
+    
+    // Make sure there's something after this position (the address)
+    const afterSplit = trimmed.substring(splitIndex).trim();
+    
+    // Only use this if what comes after looks like an address (starts with capital or number)
+    if (afterSplit && /^[A-Z0-9]/.test(afterSplit)) {
+      return {
+        name: trimmed.substring(0, splitIndex).trim(),
+        address: afterSplit,
+        hasQuotes: false
+      };
+    }
   }
   
   // Fallback

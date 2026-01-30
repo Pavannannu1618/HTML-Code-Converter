@@ -111,7 +111,10 @@ const FULLSTOP_KEYWORDS = [
   'next', 'Next', 'NEXT',
   'Promise', 'promise', 'PROMISE',
   'brothers', 'Brothers', 'BROTHERS',
-  'brother', 'Brother', 'BROTHER'
+  'brother', 'Brother', 'BROTHER',
+  'COLON', 'Colon', 'colon',
+  'Math', 'math', 'MATH',
+  'splice', 'Splice', 'SPLICE'
   
   // Standard abbreviations commented out per user request
   // 'Inc', 'Ltd', 'Corp', 'Co', 'LLC', 'LLP', 'Pty', 'Assoc', 'Bros',

@@ -1,16 +1,55 @@
 // Entity list for company name detection
 export const ENTITIES = [
-  'LIMITED', 'LTD', 'LTD.', 'PRIVATE LIMITED', 'PVT LTD', 'PVT. LTD', 'PVT LTD.',
-  'INCORPORATION', 'INC', 'INC.',
-  'CORPORATION', 'CORP', 'CORP.',
-  'LIMITED LIABILITY PARTNERSHIP', 'LLP', 'LLP.',
-  'LIMITED LIABILITY COMPANY', 'LLC',
-  'LIMITED PARTNERSHIP', 'LP', 'LP.',
-  'COMPANY', 'CO', 'CO.',
-  'PROGRAMMABLE LOGIC CONTROLLER', 'PLC', 'PLC.',
-  'AGENCY', 'AG', 'AG.',
-  'ORGANIZATION', 'ORG', 'ORG.',
-  'GESELLSCHAFT MIT BESCHRÄNKTER HAFTUNG', 'GMBH',
-  'LIMITED LIABILITY', 'LL',
-  'SALAZAR RESOURCES LIMITED', 'SRL', 'SRL.'
+   // Limited variations
+  'PRIVATE LIMITED', 'LIMITED',
+  'PVT LTD.', 'PVT LTD', 'PVT. LTD',
+  'LTD.', 'LTD',
+  
+  // Incorporation variations
+  'INCORPORATION', 'INCORPORATED',
+  'INC.', 'INC',
+  
+  // Corporation variations
+  'CORPORATION',
+  'CORP.', 'CORP',
+  
+  // Partnership variations
+  'LIMITED LIABILITY PARTNERSHIP',
+  'LLP.', 'LLP',
+  
+  // Company variations
+  'LIMITED LIABILITY COMPANY',
+  'LLC.', 'LLC',
+  
+  // Limited Partnership
+  'LIMITED PARTNERSHIP',
+  'LP.', 'LP',
+  
+  // Company
+  'COMPANY',
+  'CO.', 'CO',
+  
+  // PLC
+  'PROGRAMMABLE LOGIC CONTROLLER',
+  'PLC.', 'PLC',
+  
+  // Agency
+  'AGENCY',
+  'AG.', 'AG',
+  
+  // Organization
+  'ORGANIZATION',
+  'ORG.', 'ORG',
+  
+  // German GMBH
+  'GESELLSCHAFT MIT BESCHRÄNKTER HAFTUNG',
+  'GMBH.', 'GMBH',
+  
+  // Limited Liability
+  'LIMITED LIABILITY',
+  'LL.', 'LL',
+  
+  // SRL
+  'SALAZAR RESOURCES LIMITED',
+  'SRL.', 'SRL',
 ];

@@ -2,7 +2,7 @@ import { applyPunctuationWithSpacing } from '../punctuationRules';
 import { parseCSVLine } from '../csvParser';
 
 /**
- * Apply punctuation WITHOUT automatic quotes
+ * Apply punctuation WITHOUT quotes
  */
 const formatField = (text) => {
   if (!text) return '';
@@ -11,14 +11,26 @@ const formatField = (text) => {
 
 /**
  * Apply punctuation WITH quotes for address field
+ * 
+ * Quote spacing rules:
+ * 1. Space before left quote: " &ldquo;"
+ * 2. Space after right quote: "&rdquo; "
+ * 3. Preserve ALL punctuation spacing from punctuation rules
+ *    - If punctuation before quote: "&#41; &rdquo; " ✅
+ *    - If text before quote: "abc&rdquo; " ✅
  */
 const formatAddress = (text, shouldAddQuotes) => {
   if (!text) return '';
   const processed = applyPunctuationWithSpacing(text);
   
-  // Only add quotes if they were in the original data
+  // Only add quotes if they were in original
   if (shouldAddQuotes) {
-    return ` &ldquo;${processed.trim()}&rdquo; `;
+    // IMPORTANT: Don't use trim() - it removes punctuation spacing!
+    // Just remove leading spaces, keep trailing spaces from punctuation
+    const cleaned = processed.replace(/^\s+/, '');
+    
+    // Space before left quote, space after right quote
+    return ` &ldquo;${cleaned}&rdquo; `;
   }
   
   return processed;
@@ -26,6 +38,11 @@ const formatAddress = (text, shouldAddQuotes) => {
 
 /**
  * Extract code from first field
+ * Rule: Find LAST digit, everything after is location
+ * 
+ * Examples:
+ * N05BA01Guayama → N05BA01 | Guayama
+ * B02BCSan Ramon → B02BC | San Ramon
  */
 const extractCodeAndLocation = (text) => {
   if (!text) return { code: '', location: '' };
@@ -62,24 +79,48 @@ const extractCodeAndLocation = (text) => {
  * Company entity keywords
  */
 const COMPANY_ENTITIES = [
-'LIMITED', 'LTD.,','LTD,.', 'LTD,', 'LTD.',
-  'PRIVATE LIMITED','PVT LTD.,', 'PVT LTD,.', 'PVT. LTD', 'PVT LTD.',
-  'INCORPORATION', 'INC.,','INC,.', 'INC,', 'INC.',
-  'CORPORATION', 'CORP.,','CORP,.', 'CORP,', 'CORP.',
-  'LIMITED LIABILITY PARTNERSHIP', 'LLP.,','LLP,.', 'LLP.',"LLP,",'LLP',
-  'LIMITED LIABILITY COMPANY', 'LLC.,','LLC,.', 'LLC,', 'LLC.',
-  'LIMITED PARTNERSHIP', 'LP.,', 'LP,.',' LP,', 'LP.','LP',
-  'COMPANY', 'CO.,', 'CO,.','CO.', 'CO,','CO',
-  'PROGRAMMABLE LOGIC CONTROLLER', 'PLC.', 'PLC',
-  'AGENCY', 'AG.,', 'AG,.', 'AG,', 'AG.','AG',
-  'ORGANIZATION', 'ORG.,', 'ORG,.', 'ORG,', 'ORG.','ORG',
-  'GESELLSCHAFT MIT BESCHRÄNKTER HAFTUNG', 'GMBH.,', 'GMBH,.', 'GMBH,', 'GMBH.', 'GMBH',
-  'LIMITED LIABILITY', 'LL.,','LL,.',  'LL,', 'LL.', 'LL',
-  'SALAZAR RESOURCES LIMITED', 'SRL.,', 'SRL,.', 'SRL,', 'SRL.', 'SRL'
+  'PRIVATE LIMITED', 'LIMITED',
+  'PVT LTD.', 'PVT LTD', 'PVT. LTD',
+  'LTD.', 'LTD',
+  'INCORPORATION', 'INCORPORATED',
+  'INC.', 'INC',
+  'CORPORATION',
+  'CORP.', 'CORP',
+  'LIMITED LIABILITY PARTNERSHIP',
+  'LLP.', 'LLP',
+  'LIMITED LIABILITY COMPANY',
+  'LLC.', 'LLC',
+  'LIMITED PARTNERSHIP',
+  'LP.', 'LP',
+  'COMPANY',
+  'CO.', 'CO',
+  'PROGRAMMABLE LOGIC CONTROLLER',
+  'PLC.', 'PLC',
+  'AGENCY',
+  'AG.', 'AG',
+  'ORGANIZATION',
+  'ORG.', 'ORG',
+  'GESELLSCHAFT MIT BESCHRÄNKTER HAFTUNG',
+  'GMBH.', 'GMBH',
+  'LIMITED LIABILITY',
+  'LL.', 'LL',
+  'SALAZAR RESOURCES LIMITED',
+  'SRL.', 'SRL',
+  'LABORATORIES',
+  'LABS.', 'LABS',
+  'SA.', 'SA',
+  'AB.', 'AB',
+  'KGAA.', 'KGAA',
+  'KG.', 'KG'
 ];
 
 /**
- * Find last entity
+ * Find ALL entities in text and return the LAST one (rightmost)
+ * 
+ * CRITICAL: If multiple entities side-by-side, return the LAST one!
+ * Example: "BARR-STALFORT DIV., PITTWAY CORP."
+ *          Entities: DIV, CORP
+ *          Return: CORP (the last one)
  */
 const findLastEntity = (text) => {
   const sortedEntities = [...COMPANY_ENTITIES].sort((a, b) => b.length - a.length);
@@ -105,20 +146,30 @@ const findLastEntity = (text) => {
     return null;
   }
   
+  // Sort by position (earliest to latest)
   matches.sort((a, b) => a.start - b.start);
+  
+  // CRITICAL: Return the LAST match (rightmost entity)
   return matches[matches.length - 1];
 };
 
 /**
  * Split company name and address
- * Returns: { name, address, hasQuotes }
+ * 
+ * Priority:
+ * 1. Triple/double quotes
+ * 2. Quote separator
+ * 3. Comma separator
+ * 4. LAST entity (rightmost)
+ * 5. Street number
+ * 6. Fallback
  */
 const splitNameAndAddress = (text) => {
   if (!text) return { name: '', address: '', hasQuotes: false };
   
   const trimmed = text.trim();
   
-  // Check if original text has quote marks (indicates formatted with quotes)
+  // Check if original has quotes
   const hasQuotes = trimmed.includes('"');
   
   // Pattern 1: Triple quotes
@@ -141,7 +192,7 @@ const splitNameAndAddress = (text) => {
     };
   }
   
-  // Pattern 3: Quote separator (split at quote)
+  // Pattern 3: Quote separator
   const quoteIndex = trimmed.indexOf('"');
   if (quoteIndex > 0) {
     const beforeQuote = trimmed.substring(0, quoteIndex).trim();
@@ -164,12 +215,13 @@ const splitNameAndAddress = (text) => {
     };
   }
   
-  // Pattern 5: Entity keywords
+  // Pattern 5: LAST entity (rightmost) - CRITICAL FIX!
   const lastEntity = findLastEntity(trimmed);
   
   if (lastEntity) {
     let splitPoint = lastEntity.end;
     
+    // Check for punctuation/space after entity
     const afterEntity = trimmed.substring(splitPoint);
     const punctMatch = afterEntity.match(/^[,.\s]+/);
     if (punctMatch) {
@@ -183,7 +235,7 @@ const splitNameAndAddress = (text) => {
     };
   }
   
-  // Pattern 6: Street number (ONLY if no entity found)
+  // Pattern 6: Street number
   const streetMatch = trimmed.match(/^(.+?)(\d{1,5}\s+[A-Z])/);
   if (streetMatch) {
     return {
@@ -225,7 +277,7 @@ export const process2RowsFormat = (lines) => {
     const processedCode = formatField(code);
     const processedLocation = formatField(location);
     const processedName = formatField(name);
-    // Only add quotes if they were in the original data
+    // Only add quotes if they were in original
     const processedAddress = formatAddress(address, hasQuotes);
     
     // Build HTML

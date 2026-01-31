@@ -4,8 +4,9 @@ import FormatSelector from './components/FormatSelector';
 import FileUpload from './components/FileUpload';
 import ConversionButton from './components/ConversionButton';
 import OutputDisplay from './components/OutputDisplay';
+import Toast from './components/Toast';
 
-// Import format processors - ALL 12 FORMATS
+// Import format processors - ALL 13 FORMATS
 import { process2RowsFormat } from './utils/formatProcessors/twoRowsProcessor';
 import { process4RowsFormat } from './utils/formatProcessors/fourRowsProcessor';
 import { processWebsiteFormat } from './utils/formatProcessors/websiteProcessor';
@@ -14,11 +15,11 @@ import { processPage20000Format } from './utils/formatProcessors/page20000Proces
 import { processMDPageFormat } from './utils/formatProcessors/mdPageProcessor';
 import { processPage40000Format } from './utils/formatProcessors/page40000Processor';
 import { processADPageFormat } from './utils/formatProcessors/adPageProcessor';
-// NEW FORMATS - Now fully implemented!
 import { processPage30000Format } from './utils/formatProcessors/page30000Processor';
 import { processAFormat } from './utils/formatProcessors/aFormatProcessor';
 import { processBCFormat } from './utils/formatProcessors/bcFormatProcessor';
 import { processBWNWFormat } from './utils/formatProcessors/bwnwFormatProcessor';
+import { processDoubleDoubleFormat } from './utils/formatProcessors/doubleDoubleProcessor';
 import { cleanCSVForFormat } from './utils/csvCleaner.js';
 
 const App = () => {
@@ -32,6 +33,9 @@ const App = () => {
   const [outputData, setOutputData] = useState([]);
   const [fileName, setFileName] = useState('');
   const [processing, setProcessing] = useState(false);
+  
+  // Toast notification state
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
   // CHECK AUTHENTICATION ON MOUNT
   useEffect(() => {
@@ -47,6 +51,14 @@ const App = () => {
 
     setIsCheckingAuth(false);
   }, []);
+
+  // TOAST HELPER
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast({ show: false, message: '', type: 'success' });
+    }, 3000);
+  };
 
   // AUTHENTICATION HANDLERS
   const handleLoginSuccess = (email) => {
@@ -67,6 +79,8 @@ const App = () => {
     setOutputHTML('');
     setOutputData([]);
     setFileName('');
+    
+    showToast('👋 Logged out successfully!', 'info');
   };
 
   // FILE UPLOAD HANDLER
@@ -80,14 +94,15 @@ const App = () => {
       const reader = new FileReader();
       reader.onload = (event) => {
         setFileContent(event.target.result);
+        showToast('📁 File uploaded successfully!', 'success');
       };
       reader.readAsText(file);
     } else {
-      alert('Please upload CSV or TXT files only');
+      showToast('❌ Please upload CSV or TXT files only', 'error');
     }
   };
 
-  // PROCESS CONTENT - ALL 12 FORMATS
+  // PROCESS CONTENT - ALL 13 FORMATS
   const processContent = () => {
     if (!fileContent || !selectedFormat) return;
     
@@ -100,7 +115,6 @@ const App = () => {
       let result;
 
       switch (selectedFormat) {
-        // EXISTING FORMATS (8)
         case '2rows':
           result = process2RowsFormat(lines);
           break;
@@ -125,8 +139,6 @@ const App = () => {
         case 'adpage':
           result = processADPageFormat(lines);
           break;
-        
-        // NEW FORMATS (4) - Now fully implemented!
         case 'page30000':
           result = processPage30000Format(lines);
           break;
@@ -139,7 +151,9 @@ const App = () => {
         case 'bwformat':
           result = processBWNWFormat(lines);
           break;
-        
+        case 'doubledouble':
+          result = processDoubleDoubleFormat(lines);
+          break;
         default:
           result = { htmlOutput: '', dataArray: [] };
       }
@@ -147,6 +161,7 @@ const App = () => {
       if (result) {
         setOutputHTML(result.htmlOutput);
         setOutputData(result.dataArray);
+        showToast(`✨ Successfully processed ${result.dataArray.length} records!`, 'success');
       }
       
       setProcessing(false);
@@ -156,7 +171,7 @@ const App = () => {
   // COPY TO CLIPBOARD
   const copyToClipboard = () => {
     navigator.clipboard.writeText(outputHTML);
-    alert('HTML copied to clipboard!');
+    showToast('📋 HTML copied to clipboard!', 'success');
   };
 
   // DOWNLOAD AS EXCEL
@@ -187,15 +202,32 @@ const App = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    
+    showToast('💾 Excel file downloaded successfully!', 'success');
   };
 
   // LOADING STATE
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mb-4"></div>
-          <p className="text-white text-lg">Loading...</p>
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            display: 'inline-block',
+            width: '50px',
+            height: '50px',
+            border: '4px solid white',
+            borderTopColor: 'transparent',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            marginBottom: '20px'
+          }}></div>
+          <p style={{ color: 'white', fontSize: '20px', fontWeight: 'bold' }}>Loading...</p>
         </div>
       </div>
     );
@@ -208,56 +240,209 @@ const App = () => {
 
   // MAIN APPLICATION
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header with Logout */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+      position: 'relative'
+    }}>
+      {/* Animated Background Blobs */}
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        overflow: 'hidden',
+        pointerEvents: 'none',
+        zIndex: 0
+      }}>
+        <div className="animate-blob" style={{
+          position: 'absolute',
+          top: '-10rem',
+          right: '-10rem',
+          width: '20rem',
+          height: '20rem',
+          background: 'rgba(147, 51, 234, 0.3)',
+          borderRadius: '50%',
+          filter: 'blur(60px)',
+          mixBlendMode: 'multiply'
+        }}></div>
+        <div className="animate-blob animation-delay-2000" style={{
+          position: 'absolute',
+          bottom: '-10rem',
+          left: '-10rem',
+          width: '20rem',
+          height: '20rem',
+          background: 'rgba(59, 130, 246, 0.3)',
+          borderRadius: '50%',
+          filter: 'blur(60px)',
+          mixBlendMode: 'multiply'
+        }}></div>
+        <div className="animate-blob animation-delay-4000" style={{
+          position: 'absolute',
+          top: '10rem',
+          left: '10rem',
+          width: '20rem',
+          height: '20rem',
+          background: 'rgba(236, 72, 153, 0.3)',
+          borderRadius: '50%',
+          filter: 'blur(60px)',
+          mixBlendMode: 'multiply'
+        }}></div>
+      </div>
+
+      {/* Toast Notification */}
+      <Toast 
+        show={toast.show} 
+        message={toast.message} 
+        type={toast.type}
+        onClose={() => setToast({ show: false, message: '', type: 'success' })}
+      />
+
+      {/* Header */}
+      <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 40,
+        backdropFilter: 'blur(12px)',
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        borderBottom: '1px solid rgba(229, 231, 235, 0.5)',
+        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div style={{
+          maxWidth: '1280px',
+          margin: '0 auto',
+          padding: '16px 24px'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+              }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                   <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/>
                 </svg>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-800">HTML Code Formatter</h1>
-                <p className="text-sm text-gray-500">Logged in as: {userEmail}</p>
+                <h1 style={{
+                  fontSize: '24px',
+                  fontWeight: 'bold',
+                  background: 'linear-gradient(to right, #3b82f6, #8b5cf6, #ec4899)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text'
+                }}>
+                  HTML Code Formatter
+                </h1>
+                <p style={{ fontSize: '14px', color: '#6b7280' }}>
+                  <span style={{
+                    display: 'inline-block',
+                    width: '8px',
+                    height: '8px',
+                    background: '#10b981',
+                    borderRadius: '50%',
+                    marginRight: '8px'
+                  }} className="animate-pulse"></span>
+                  {userEmail}
+                </p>
               </div>
             </div>
+            
             <button 
               onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all duration-200"
+              className="btn-primary"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
             >
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                 <path d="M9 3H4a1 1 0 00-1 1v12a1 1 0 001 1h5M13 7l4 4m0 0l-4 4m4-4H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
-              Logout
+              <span>Logout</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            {/* Header */}
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">
-                Company Data HTML Converter
-              </h2>
-              <p className="text-gray-600">
-                Convert company data to HTML format with proper punctuation codes
-              </p>
-              <div className="mt-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
-                <p className="text-sm text-blue-800 mb-2">
-                  <strong>📊 Total Formats:</strong> 12 formats
-                  <span className="ml-4 text-green-600 font-semibold">✅ All Active!</span>
+      <div style={{ padding: '24px', position: 'relative', zIndex: 10 }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
+          {/* Hero Section */}
+          <div style={{ marginBottom: '32px', textAlign: 'center' }} className="animate-fade-in">
+            <h2 style={{
+              fontSize: '48px',
+              fontWeight: 'black',
+              marginBottom: '16px',
+              lineHeight: '1.2'
+            }}>
+              Transform Your Data Into{' '}
+              <span style={{
+                background: 'linear-gradient(to right, #3b82f6, #8b5cf6, #ec4899)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                display: 'block'
+              }}>
+                Beautiful HTML
+              </span>
+            </h2>
+            <p style={{ fontSize: '20px', color: '#6b7280', maxWidth: '800px', margin: '0 auto' }}>
+              Professional data conversion with intelligent formatting ✨
+            </p>
+          </div>
+
+          {/* Main Card */}
+          <div className="card" style={{
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(16px)',
+            padding: '32px',
+            marginBottom: '32px'
+          }}>
+            {/* Info Banner */}
+            <div style={{
+              marginBottom: '32px',
+              padding: '24px',
+              background: 'linear-gradient(to right, #eff6ff, #f5f3ff)',
+              borderLeft: '4px solid #3b82f6',
+              borderRadius: '12px',
+              display: 'flex',
+              gap: '16px'
+            }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                background: '#3b82f6',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <svg style={{ width: '24px', height: '24px', color: 'white' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p style={{ fontSize: '14px', color: '#1e3a8a', marginBottom: '8px', fontWeight: 'bold' }}>
+                  📊 <strong>Total Formats:</strong> 13 formats
+                  <span className="badge-new" style={{ marginLeft: '16px', padding: '4px 12px', borderRadius: '9999px', fontSize: '12px' }}>
+                    ✅ ALL ACTIVE
+                  </span>
                 </p>
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> All dots (.) are converted to &#8901; (dot code). 
-                  You can manually change to &#39; (fullstop) if needed.
+                <p style={{ fontSize: '14px', color: '#1e40af' }}>
+                  <strong>💡 Pro Tip:</strong> All dots (.) are converted to <code>&#8901;</code> (dot code). 
+                  You can manually change to <code>&#39;</code> (fullstop) if needed.
                 </p>
               </div>
             </div>
@@ -270,27 +455,42 @@ const App = () => {
 
             {/* File Upload */}
             {selectedFormat && (
-              <FileUpload 
-                fileName={fileName}
-                onFileUpload={handleFileUpload}
-              />
+              <div className="animate-fade-in-up">
+                <FileUpload 
+                  fileName={fileName}
+                  onFileUpload={handleFileUpload}
+                />
+              </div>
             )}
 
             {/* Conversion Button */}
             {selectedFormat && fileName && (
-              <ConversionButton
-                fileContent={fileContent}
-                processing={processing}
-                onConvert={processContent}
-              />
+              <div className="animate-fade-in-up animation-delay-200">
+                <ConversionButton
+                  fileContent={fileContent}
+                  processing={processing}
+                  onConvert={processContent}
+                />
+              </div>
             )}
 
             {/* Output Display */}
-            <OutputDisplay
-              outputHTML={outputHTML}
-              onCopy={copyToClipboard}
-              onDownload={downloadExcel}
-            />
+            {outputHTML && (
+              <div className="animate-fade-in-up animation-delay-400">
+                <OutputDisplay
+                  outputHTML={outputHTML}
+                  onCopy={copyToClipboard}
+                  onDownload={downloadExcel}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div style={{ textAlign: 'center', color: '#6b7280' }} className="animate-fade-in-up animation-delay-600">
+            <p style={{ fontSize: '14px' }}>
+              Made with <span style={{ color: '#ef4444' }} className="animate-pulse">❤️</span> by Your Team • © 2026 HTML Code Formatter
+            </p>
           </div>
         </div>
       </div>

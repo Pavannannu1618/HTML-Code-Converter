@@ -11,13 +11,6 @@ const formatField = (text) => {
 
 /**
  * Apply punctuation WITH quotes for address field
- * 
- * Quote spacing rules:
- * 1. Space before left quote: " &ldquo;"
- * 2. Space after right quote: "&rdquo; "
- * 3. Preserve ALL punctuation spacing from punctuation rules
- *    - If punctuation before quote: "&#41; &rdquo; " ✅
- *    - If text before quote: "abc&rdquo; " ✅
  */
 const formatAddress = (text, shouldAddQuotes) => {
   if (!text) return '';
@@ -25,10 +18,8 @@ const formatAddress = (text, shouldAddQuotes) => {
   
   // Only add quotes if they were in original
   if (shouldAddQuotes) {
-    // IMPORTANT: Don't use trim() - it removes punctuation spacing!
-    // Just remove leading spaces, keep trailing spaces from punctuation
+    // Remove only leading spaces, preserve trailing spaces from punctuation
     const cleaned = processed.replace(/^\s+/, '');
-    
     // Space before left quote, space after right quote
     return ` &ldquo;${cleaned}&rdquo; `;
   }
@@ -37,46 +28,7 @@ const formatAddress = (text, shouldAddQuotes) => {
 };
 
 /**
- * Extract code from first field
- * Rule: Find LAST digit, everything after is location
- * 
- * Examples:
- * N05BA01Guayama → N05BA01 | Guayama
- * B02BCSan Ramon → B02BC | San Ramon
- */
-const extractCodeAndLocation = (text) => {
-  if (!text) return { code: '', location: '' };
-  
-  // Find the LAST digit in the string
-  let lastDigitIndex = -1;
-  for (let i = 0; i < text.length; i++) {
-    if (/\d/.test(text[i])) {
-      lastDigitIndex = i;
-    }
-  }
-  
-  // If we found digits, split after the last digit
-  if (lastDigitIndex !== -1 && lastDigitIndex < text.length - 1) {
-    const code = text.substring(0, lastDigitIndex + 1).trim();
-    const location = text.substring(lastDigitIndex + 1).trim();
-    
-    return { code, location };
-  }
-  
-  // Fallback
-  const match = text.match(/^([A-Z0-9]+)([A-Z][a-z].*)$/);
-  if (match) {
-    return {
-      code: match[1].trim(),
-      location: match[2].trim()
-    };
-  }
-  
-  return { code: text.trim(), location: '' };
-};
-
-/**
- * Company entity keywords
+ * Company entity keywords (DIV is NOT included!)
  */
 const COMPANY_ENTITIES = [
   'PRIVATE LIMITED', 'LIMITED',
@@ -206,13 +158,12 @@ const splitNameAndAddress = (text) => {
     };
   }
   
-  // Pattern 4: LAST entity (rightmost)
+  // Pattern 4: Entity keywords (last/rightmost)
   const lastEntity = findLastEntity(trimmed);
   
   if (lastEntity) {
     let splitPoint = lastEntity.end;
     
-    // Check for punctuation/space after entity
     const afterEntity = trimmed.substring(splitPoint);
     const punctMatch = afterEntity.match(/^[,.\s]+/);
     if (punctMatch) {
@@ -236,33 +187,21 @@ const splitNameAndAddress = (text) => {
     };
   }
   
-  // Pattern 6: Capital letters pattern (LAST RESORT before fallback)
-  // If nothing else works, split at second-to-last capital letter that starts a word
-  // Example: "KNOLL AG CHEMISCHE FABRIKEN1191 North Fiesta"
-  // Find capital letters that start words: K, A, C, F, N, F
-  // Split before second-to-last: "...FABRIKEN" | "1191..."
-  
-  // Find all positions where capital letter starts a word
+  // Pattern 6: Capital letters pattern
   const capitalPositions = [];
   for (let i = 0; i < trimmed.length; i++) {
     const char = trimmed[i];
     const prevChar = i > 0 ? trimmed[i - 1] : ' ';
     
-    // Capital letter that starts a word (preceded by space, start of string, or punctuation)
     if (/[A-Z]/.test(char) && /[\s\-,.]/.test(prevChar)) {
       capitalPositions.push(i);
     }
   }
   
-  // Need at least 2 capital positions to use this pattern
   if (capitalPositions.length >= 2) {
-    // Get second-to-last capital letter position
     const splitIndex = capitalPositions[capitalPositions.length - 2];
-    
-    // Make sure there's something after this position (the address)
     const afterSplit = trimmed.substring(splitIndex).trim();
     
-    // Only use this if what comes after looks like an address (starts with capital or number)
     if (afterSplit && /^[A-Z0-9]/.test(afterSplit)) {
       return {
         name: trimmed.substring(0, splitIndex).trim(),
@@ -277,14 +216,22 @@ const splitNameAndAddress = (text) => {
 };
 
 /**
- * Process 2 Rows Format
+ * Process Double Double Format
+ * 
+ * CSV Format: "Company1Name+Address","Company2Name+Address"
+ * 
+ * Output:
+ * Company1 Name
+ * Company1 Address
+ * Company2 Name
+ * Company2 Address
  */
-export const process2RowsFormat = (lines) => {
+export const processDoubleDoubleFormat = (lines) => {
   let htmlOutput = '';
   let dataArray = [];
   let counter = 1;
 
-  console.log('📄 2 Rows Format: Processing...');
+  console.log('📄 Double Double Format: Processing...');
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -294,36 +241,36 @@ export const process2RowsFormat = (lines) => {
     
     if (columns.length < 2) continue;
     
-    // Column 1: Code + Location
-    const { code, location } = extractCodeAndLocation(columns[0] || '');
+    // Column 1: First Company Name + Address
+    const first = splitNameAndAddress(columns[0] || '');
     
-    // Column 2: Company Name + Address
-    const { name, address, hasQuotes } = splitNameAndAddress(columns[1] || '');
+    // Column 2: Second Company Name + Address
+    const second = splitNameAndAddress(columns[1] || '');
     
     // Apply punctuation
-    const processedCode = formatField(code);
-    const processedLocation = formatField(location);
-    const processedName = formatField(name);
-    // Only add quotes if they were in original
-    const processedAddress = formatAddress(address, hasQuotes);
+    const firstName = formatField(first.name);
+    const firstAddress = formatAddress(first.address, first.hasQuotes);
+    
+    const secondName = formatField(second.name);
+    const secondAddress = formatAddress(second.address, second.hasQuotes);
     
     // Build HTML
     htmlOutput += `<doctypehtml${counter}>\n`;
     htmlOutput += `<html>\n`;
     htmlOutput += `<body>\n`;
-    htmlOutput += processedCode + '\n';
-    htmlOutput += processedLocation + '\n';
-    htmlOutput += processedName + '\n';
-    htmlOutput += processedAddress + '\n';
+    htmlOutput += firstName + '\n';
+    htmlOutput += firstAddress + '\n';
+    htmlOutput += secondName + '\n';
+    htmlOutput += secondAddress + '\n';
     htmlOutput += `</body>\n`;
     htmlOutput += `</html>\n`;
     
     dataArray.push({
       'HTML Tag': `doctypehtml${counter}`,
-      'Code': processedCode,
-      'Location': processedLocation,
-      'Company Name': processedName,
-      'Address': processedAddress
+      'First Company Name': firstName,
+      'First Address': firstAddress,
+      'Second Company Name': secondName,
+      'Second Address': secondAddress
     });
     
     counter++;
@@ -335,9 +282,9 @@ export const process2RowsFormat = (lines) => {
 };
 
 /**
- * Validate 2 Rows input
+ * Validate Double Double input
  */
-export const validate2RowsInput = (lines) => {
+export const validateDoubleDoubleInput = (lines) => {
   if (!lines || lines.length === 0) {
     return { valid: false, error: 'No data to process.' };
   }
@@ -350,6 +297,6 @@ export const validate2RowsInput = (lines) => {
   return {
     valid: true,
     expectedRecords: nonEmptyLines.length,
-    message: `Ready to process ${nonEmptyLines.length} 2 Rows records`
+    message: `Ready to process ${nonEmptyLines.length} Double Double records`
   };
 };
